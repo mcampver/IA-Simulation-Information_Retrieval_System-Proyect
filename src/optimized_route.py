@@ -1,5 +1,6 @@
 import networkx as nx
 import sys
+import os
 sys.path.append("src/metaheuristic/ag_solver")
 import ag_solver as ag_solver
 sys.path.append("src/metaheuristic/vns_solver") 
@@ -8,6 +9,20 @@ sys.path.append("src/metaheuristic/sa_solver")
 import sa_solver 
 sys.path.append("src/metaheuristic/ts_solver") 
 import ts_solver
+
+# Importar el analizador de impacto climático
+sys.path.append("src/weather")
+try:
+    from weather_impact_analyzer import get_weather_impact_for_routes
+    WEATHER_ANALYSIS_AVAILABLE = True
+    print("Análisis climático disponible para optimización de rutas")
+except ImportError as e:
+    print(f"Advertencia: Análisis climático no disponible: {e}")
+    WEATHER_ANALYSIS_AVAILABLE = False
+    
+    def get_weather_impact_for_routes():
+        """Función dummy si el análisis climático no está disponible"""
+        return 1.0
 
 
 # def expand_route_with_path_nodes(street_graph, route):
@@ -35,9 +50,9 @@ import ts_solver
 #     return expanded_route
 
 def optimize_delivery_routes(street_graph, start_point, target_points, num_trucks=1, 
-                            truck_capacities=None, target_demands=None):
+                            truck_capacities=None, target_demands=None, use_weather_impact=True):
     """
-    Optimiza rutas de entrega utilizando el solver VRP avanzado
+    Optimiza rutas de entrega utilizando el solver VRP avanzado con análisis climático
     
     Args:
         street_graph: Grafo de NetworkX con la red de calles
@@ -46,11 +61,24 @@ def optimize_delivery_routes(street_graph, start_point, target_points, num_truck
         num_trucks: Número de vehículos disponibles
         truck_capacities: Lista de capacidades de los vehículos
         target_demands: Lista de demandas para cada punto objetivo
+        use_weather_impact: Si usar el análisis de impacto climático
     
     Returns:
         (rutas_optimizadas, costo_total)
     """
     try:
+        # Obtener factor de impacto climático
+        weather_factor = 1.0
+        if use_weather_impact and WEATHER_ANALYSIS_AVAILABLE:
+            try:
+                weather_factor = get_weather_impact_for_routes()
+                print(f"Factor de impacto climático aplicado: {weather_factor:.2f}")
+            except Exception as e:
+                print(f"Error obteniendo factor climático: {e}")
+                weather_factor = 1.0
+        else:
+            print("Análisis climático deshabilitado o no disponible")
+        
         # Validar y preparar capacidades
         if not truck_capacities:
             truck_capacities = [100] * num_trucks  # Capacidad por defecto
@@ -80,17 +108,19 @@ def optimize_delivery_routes(street_graph, start_point, target_points, num_truck
                 # Calcular todas las distancias desde source en una sola llamada
                 shortest_paths = nx.single_source_dijkstra_path_length(
                     street_graph, source, weight='weight')
-                
-                # Llenar toda la fila i (distancias desde source a todos los demás)
+                  # Llenar toda la fila i (distancias desde source a todos los demás)
                 for j in range(n):
                     if i == j:
                         continue  # Ya asignado como 0
                     
                     target = all_points[j]
-                    distance = shortest_paths.get(target, float('inf'))
+                    base_distance = shortest_paths.get(target, float('inf'))
+                    
+                    # Aplicar factor climático a la distancia
+                    adjusted_distance = base_distance * weather_factor
                     
                     # Guardar en la matriz
-                    dist_matrix[i][j] = distance
+                    dist_matrix[i][j] = adjusted_distance
                     
             except nx.NetworkXError as e:
                 print(f"Error al calcular distancias desde {source}: {e}")

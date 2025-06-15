@@ -10,6 +10,17 @@ from src.vehicle import initialize_vehicles, update_vehicle_positions
 from src.traffic_lights import initialize_traffic_lights, update_traffic_lights
 from src.optimized_route import optimize_delivery_routes
 
+# Importar análisis climático
+import sys
+sys.path.append("src/weather")
+try:
+    from weather_impact_analyzer import WeatherImpactAnalyzer
+    WEATHER_ANALYZER = WeatherImpactAnalyzer()
+    print("Sistema de análisis climático inicializado")
+except ImportError as e:
+    print(f"Advertencia: Sistema climático no disponible: {e}")
+    WEATHER_ANALYZER = None
+
 
 traffic_lights = {}  # node_id: {"state": "red"/"green", "timer": X}
 
@@ -243,23 +254,38 @@ async def handle_optimization_request(websocket, data):
                 "message": "Se requiere un punto de inicio y al menos un objetivo"
             }))
             return
-            
-        # Convertir IDs de nodos a enteros si es necesario
+              # Convertir IDs de nodos a enteros si es necesario
         try:
             start_point = int(start_point)
             target_points = [int(p) for p in target_points]
         except ValueError:
             # Si los IDs no son numéricos, mantenerlos como están
             pass
+        
+        # Obtener información climática si está disponible
+        weather_info = None
+        if WEATHER_ANALYZER:
+            try:
+                weather_factor, weather_details = WEATHER_ANALYZER.calculate_weather_impact_factor()
+                weather_info = {
+                    "impact_factor": weather_factor,
+                    "interpretation": weather_details.get('interpretation', ''),
+                    "weather_summary": weather_details.get('weather_data', {})
+                }
+                print(f"Optimización con factor climático: {weather_factor:.2f}")
+            except Exception as e:
+                print(f"Error obteniendo datos climáticos: {e}")
+                weather_info = {"error": str(e)}
             
-        # Realizar la optimización
+        # Realizar la optimización (con análisis climático integrado)
         routes, total_cost = optimize_delivery_routes(
             street_graph=street_graph,
             start_point=start_point,
             target_points=target_points,
             num_trucks=num_trucks,
             truck_capacities=truck_capacities,
-            target_demands=target_demands
+            target_demands=target_demands,
+            use_weather_impact=True  # Habilitar análisis climático
         )
         
         # Preparar resultados para enviar al cliente
@@ -291,13 +317,17 @@ async def handle_optimization_request(websocket, data):
                             continue
                             
                     formatted_routes.append(route_points)
-                    
-                # Enviar resultados
-                await websocket.send(json.dumps({
+                      # Enviar resultados (incluir información climática si está disponible)
+                response_data = {
                     "type": "optimization_result",
                     "routes": formatted_routes,
                     "total_cost": total_cost
-                }))
+                }
+                
+                if weather_info:
+                    response_data["weather_info"] = weather_info
+                
+                await websocket.send(json.dumps(response_data))
             except Exception as e:
                 print(f"Error al formatear rutas: {e}")
                 await websocket.send(json.dumps({

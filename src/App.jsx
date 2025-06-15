@@ -1,4 +1,3 @@
-// src/App.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { DeckGL } from "deck.gl";
 import { Map } from "react-map-gl/maplibre";
@@ -8,6 +7,9 @@ import RouteInfo from "./components/RouteInfo";
 import StatusPanel from "./components/StatusPanel";
 import StatsButton from "./components/StatsButton";
 import StatsModal from "./components/StatsModal";
+import WeatherInfoPanel from "./components/WeatherInfoPanel";
+import WeatherOverlay from "./components/WeatherOverlay";
+import RouteWeatherEffects from "./components/RouteWeatherEffects";
 import { calculateRouteDistance } from "./utils/distance";
 import { getRouteColor } from "./utils/colors";
 
@@ -38,9 +40,10 @@ function App() {
     num_trucks: 3,
     truck_capacities: [10, 10, 10],
     target_demands: {}
-  });
-  const [selectedRouteId, setSelectedRouteId] = useState(null);
+  });  const [selectedRouteId, setSelectedRouteId] = useState(null);
   const [showDetailedStats, setShowDetailedStats] = useState(false);
+  const [weatherInfo, setWeatherInfo] = useState(null); // Nueva estado para información climática
+  const [showWeatherPanel, setShowWeatherPanel] = useState(true); // Control de visibilidad del panel
   
   const trailsRef = useRef({});
   const wsRef = useRef(null);
@@ -85,10 +88,15 @@ function App() {
               setVehicleData(updated);
               setTrafficLights(data.traffic_lights || []);
             }
-            
-            // Si es una respuesta de optimización
+              // Si es una respuesta de optimización
             if (data.type === 'optimization_result') {
               console.log("Recibidos resultados de optimización:", data);
+              
+              // Guardar información climática si está disponible
+              if (data.weather_info) {
+                setWeatherInfo(data.weather_info);
+                console.log("Información climática:", data.weather_info);
+              }
               
               // Transformar las rutas al formato esperado por PathLayer
               // y calcular la distancia una sola vez
@@ -179,9 +187,8 @@ function App() {
     ...route,
     selected: route.id === selectedRouteId
   }));
-
   const layers = [
-    // Capa para rutas optimizadas
+    // Capa para rutas optimizadas con efectos climáticos
     new PathLayer({
       id: 'optimized-routes',
       data: optimizedRoutes,
@@ -189,8 +196,26 @@ function App() {
       widthScale: 1,
       widthMinPixels: 2,
       getPath: d => d.path,
-      getColor: d => d.id === selectedRouteId ? [255, 255, 255] : d.color,
-      getWidth: d => d.id === selectedRouteId ? 8 : 5,
+      getColor: d => {
+        // Aplicar efectos de color basados en clima
+        if (weatherInfo && weatherInfo.impact_factor > 1.6) {
+          // Rutas más rojas/naranjas para condiciones adversas
+          return d.id === selectedRouteId ? [255, 255, 255] : [255, 100, 100];
+        } else if (weatherInfo && weatherInfo.impact_factor > 1.3) {
+          // Rutas amarillas para condiciones moderadas
+          return d.id === selectedRouteId ? [255, 255, 255] : [255, 180, 0];
+        }
+        // Color normal
+        return d.id === selectedRouteId ? [255, 255, 255] : d.color;
+      },
+      getWidth: d => {
+        // Ancho de línea basado en clima
+        const baseWidth = d.id === selectedRouteId ? 8 : 5;
+        if (weatherInfo && weatherInfo.impact_factor > 1.6) {
+          return baseWidth + 2; // Líneas más gruesas para condiciones adversas
+        }
+        return baseWidth;
+      },
       onHover: (info) => {
         // Actualiza el tooltip si se necesita
       },
@@ -280,15 +305,31 @@ function App() {
             showDetailedStats={showDetailedStats}
             setShowDetailedStats={setShowDetailedStats}
           />
-          
-          {/* Panel de estadísticas detalladas */}
+            {/* Panel de estadísticas detalladas */}
           <StatsModal 
             showDetailedStats={showDetailedStats}
             setShowDetailedStats={setShowDetailedStats}
             optimizedRoutes={optimizedRoutes}
           />
+            {/* Panel de información climática */}
+          <WeatherInfoPanel 
+            weatherInfo={weatherInfo}
+            isVisible={showWeatherPanel && weatherInfo !== null}
+          />
         </>
       )}
+      
+      {/* Overlay climático compacto en el mapa */}
+      <WeatherOverlay 
+        weatherInfo={weatherInfo}
+        position="top-right"
+      />
+      
+      {/* Efectos visuales de clima en rutas */}
+      <RouteWeatherEffects 
+        routes={optimizedRoutes}
+        weatherInfo={weatherInfo}
+      />
       
       <DeckGL
         initialViewState={INITIAL_VIEW_STATE}
@@ -297,6 +338,40 @@ function App() {
       >
         <Map reuseMaps mapLib={import("maplibre-gl")} mapStyle={MAP_STYLE} />
       </DeckGL>
+      
+      {/* Botón para toggle del panel climático */}
+      {weatherInfo && (
+        <button 
+          className="weather-toggle-btn"
+          onClick={() => setShowWeatherPanel(!showWeatherPanel)}
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            left: '20px',
+            zIndex: 1000,
+            background: 'rgba(79, 70, 229, 0.9)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            width: '50px',
+            height: '50px',
+            fontSize: '20px',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'scale(1.1)';
+            e.target.style.background = 'rgba(79, 70, 229, 1)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'scale(1)';
+            e.target.style.background = 'rgba(79, 70, 229, 0.9)';
+          }}
+        >
+          {showWeatherPanel ? '🌤️' : '🌦️'}
+        </button>
+      )}
     </>
   );
 }

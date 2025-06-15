@@ -1,0 +1,373 @@
+{
+  "generated_at": "2025-06-15T12:51:10.903392",
+  "location": {
+    "city": "La Habana, Cuba",
+    "latitude": 23.1136,
+    "longitude": -82.3666
+  },
+  "current_analysis": {
+    "timestamp": "2025-06-15T12:51:08.232166",
+    "weather_data": {
+      "time": "2025-06-15T12:45",
+      "interval": 900,
+      "temperature_2m": 31.9,
+      "precipitation": 0.0,
+      "wind_speed_10m": 10.4,
+      "cloud_cover": 51,
+      "weather_code": 2,
+      "visibility": 24140.0
+    },
+    "knowledge_graph": {
+      "impact": {
+        "speed_factor": 1.0,
+        "delay_probability": 0.05,
+        "risk_level": "low",
+        "confidence": 0.9,
+        "weight": 0.9
+      },
+      "factor": 1.05
+    },
+    "markov_chain": {
+      "factor": 1.2713268131868132,
+      "model_available": true
+    },
+    "combined_factor": 1.1385307252747254,
+    "interpretation": "Condiciones buenas - Impacto mínimo en tiempos de entrega"
+  },
+  "forecast_48h": [
+    {
+      "time": "2025-06-15T00:00",
+      "impact_factor": 1.032773509933775,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "27.5°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-15T01:00",
+      "impact_factor": 1.032773509933775,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "27.3°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-15T02:00",
+      "impact_factor": 1.0527664615384615,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "27.2°C, templado, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-15T03:00",
+      "impact_factor": 1.0527664615384615,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "26.9°C, templado, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-15T04:00",
+      "impact_factor": 1.0527664615384615,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "26.7°C, templado, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-15T05:00",
+      "impact_factor": 1.0527664615384615,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "26.5°C, templado, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-15T06:00",
+      "impact_factor": 1.0527664615384615,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "26.4°C, templado, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-15T07:00",
+      "impact_factor": 1.0527664615384615,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "26.3°C, templado, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-15T08:00",
+      "impact_factor": 1.0928454107142858,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "26.4°C, templado, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-15T09:00",
+      "impact_factor": 1.0730107368421051,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "27.1°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-15T10:00",
+      "impact_factor": 1.0730107368421051,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "28.4°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-15T11:00",
+      "impact_factor": 1.0928454107142858,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "29.9°C, templado, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-15T12:00",
+      "impact_factor": 1.1385307252747254,
+      "interpretation": "Condiciones buenas - Impacto mínimo en tiempos de entrega",
+      "weather_summary": "31.0°C, caluroso, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-15T13:00",
+      "impact_factor": 1.1385307252747254,
+      "interpretation": "Condiciones buenas - Impacto mínimo en tiempos de entrega",
+      "weather_summary": "32.1°C, caluroso, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-15T14:00",
+      "impact_factor": 1.4150654468085107,
+      "interpretation": "Condiciones moderadas - Posibles retrasos menores",
+      "weather_summary": "32.7°C, caluroso, muy nuboso"
+    },
+    {
+      "time": "2025-06-15T15:00",
+      "impact_factor": 1.5019834285714286,
+      "interpretation": "Condiciones moderadas - Posibles retrasos menores",
+      "weather_summary": "31.9°C, caluroso, lluvia ligera, muy nuboso"
+    },
+    {
+      "time": "2025-06-15T16:00",
+      "impact_factor": 1.1385307252747254,
+      "interpretation": "Condiciones buenas - Impacto mínimo en tiempos de entrega",
+      "weather_summary": "31.1°C, caluroso, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-15T17:00",
+      "impact_factor": 1.1385307252747254,
+      "interpretation": "Condiciones buenas - Impacto mínimo en tiempos de entrega",
+      "weather_summary": "30.8°C, caluroso, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-15T18:00",
+      "impact_factor": 1.1385307252747254,
+      "interpretation": "Condiciones buenas - Impacto mínimo en tiempos de entrega",
+      "weather_summary": "31.0°C, caluroso, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-15T19:00",
+      "impact_factor": 1.4646545714285715,
+      "interpretation": "Condiciones moderadas - Posibles retrasos menores",
+      "weather_summary": "28.9°C, templado, lluvia ligera, muy nuboso"
+    },
+    {
+      "time": "2025-06-15T20:00",
+      "impact_factor": 1.3245,
+      "interpretation": "Condiciones moderadas - Posibles retrasos menores",
+      "weather_summary": "29.1°C, templado, lluvia ligera, despejado"
+    },
+    {
+      "time": "2025-06-15T21:00",
+      "impact_factor": 1.0730107368421051,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "28.9°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-15T22:00",
+      "impact_factor": 1.0928454107142858,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "28.4°C, templado, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-15T23:00",
+      "impact_factor": 1.0928454107142858,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "28.1°C, templado, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-16T00:00",
+      "impact_factor": 1.0730107368421051,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "27.9°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-16T01:00",
+      "impact_factor": 1.032773509933775,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "27.7°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-16T02:00",
+      "impact_factor": 1.0730107368421051,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "27.3°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-16T03:00",
+      "impact_factor": 1.032773509933775,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "26.9°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-16T04:00",
+      "impact_factor": 1.032773509933775,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "26.6°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-16T05:00",
+      "impact_factor": 1.0527664615384615,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "26.3°C, templado, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-16T06:00",
+      "impact_factor": 1.0527664615384615,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "26.1°C, templado, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-16T07:00",
+      "impact_factor": 1.032773509933775,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "26.0°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-16T08:00",
+      "impact_factor": 1.0730107368421051,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "26.2°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-16T09:00",
+      "impact_factor": 1.0730107368421051,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "27.1°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-16T10:00",
+      "impact_factor": 1.0730107368421051,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "28.4°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-16T11:00",
+      "impact_factor": 1.0730107368421051,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "29.9°C, templado, despejado"
+    },
+    {
+      "time": "2025-06-16T12:00",
+      "impact_factor": 1.1150518750000002,
+      "interpretation": "Condiciones buenas - Impacto mínimo en tiempos de entrega",
+      "weather_summary": "31.3°C, caluroso, despejado"
+    },
+    {
+      "time": "2025-06-16T13:00",
+      "impact_factor": 1.1385307252747254,
+      "interpretation": "Condiciones buenas - Impacto mínimo en tiempos de entrega",
+      "weather_summary": "32.3°C, caluroso, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-16T14:00",
+      "impact_factor": 1.1385307252747254,
+      "interpretation": "Condiciones buenas - Impacto mínimo en tiempos de entrega",
+      "weather_summary": "33.0°C, caluroso, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-16T15:00",
+      "impact_factor": 1.4150654468085107,
+      "interpretation": "Condiciones moderadas - Posibles retrasos menores",
+      "weather_summary": "32.6°C, caluroso, muy nuboso"
+    },
+    {
+      "time": "2025-06-16T16:00",
+      "impact_factor": 1.1385307252747254,
+      "interpretation": "Condiciones buenas - Impacto mínimo en tiempos de entrega",
+      "weather_summary": "31.2°C, caluroso, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-16T17:00",
+      "impact_factor": 1.1385307252747254,
+      "interpretation": "Condiciones buenas - Impacto mínimo en tiempos de entrega",
+      "weather_summary": "31.1°C, caluroso, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-16T18:00",
+      "impact_factor": 1.4097984000000001,
+      "interpretation": "Condiciones moderadas - Posibles retrasos menores",
+      "weather_summary": "29.9°C, templado, lluvia ligera, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-16T19:00",
+      "impact_factor": 1.1385307252747254,
+      "interpretation": "Condiciones buenas - Impacto mínimo en tiempos de entrega",
+      "weather_summary": "30.3°C, caluroso, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-16T20:00",
+      "impact_factor": 1.3686492173913043,
+      "interpretation": "Condiciones moderadas - Posibles retrasos menores",
+      "weather_summary": "29.4°C, templado, muy nuboso"
+    },
+    {
+      "time": "2025-06-16T21:00",
+      "impact_factor": 1.0928454107142858,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "28.7°C, templado, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-16T22:00",
+      "impact_factor": 1.0928454107142858,
+      "interpretation": "Condiciones ideales - Sin impacto significativo en entregas",
+      "weather_summary": "28.4°C, templado, parcialmente nuboso"
+    },
+    {
+      "time": "2025-06-16T23:00",
+      "impact_factor": 1.3686492173913043,
+      "interpretation": "Condiciones moderadas - Posibles retrasos menores",
+      "weather_summary": "28.2°C, templado, muy nuboso"
+    }
+  ],
+  "model_statistics": {
+    "total_states": 38,
+    "most_common_states": [
+      [
+        "none_warm_light_partial",
+        224
+      ],
+      [
+        "none_mild_calm_clear",
+        166
+      ],
+      [
+        "none_warm_calm_clear",
+        151
+      ],
+      [
+        "none_mild_calm_partial",
+        140
+      ],
+      [
+        "none_warm_calm_partial",
+        130
+      ],
+      [
+        "none_mild_light_partial",
+        118
+      ],
+      [
+        "none_warm_light_clear",
+        95
+      ],
+      [
+        "none_hot_light_partial",
+        91
+      ],
+      [
+        "none_hot_calm_partial",
+        73
+      ],
+      [
+        "none_warm_light_overcast",
+        69
+      ]
+    ],
+    "transition_matrix_size": 250
+  }
+}
