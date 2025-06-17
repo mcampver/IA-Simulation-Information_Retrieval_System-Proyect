@@ -30,7 +30,9 @@ class WeatherKnowledgeGraphVisualizer:
             'weather_condition': '#3498db',  # Azul para condiciones climáticas
             'transport_impact': '#e74c3c',  # Rojo para impactos de transporte
             'road_type': '#2ecc71',         # Verde para tipos de carretera
-            'vehicle_type': '#f39c12'       # Naranja para tipos de vehículo
+            'vehicle_type': '#f39c12',      # Naranja para tipos de vehículo
+            'surface_type': '#9b59b6',      # Púrpura para tipos de superficie
+            'transport_factor': '#f1c40f'   # Amarillo para factores de transporte
         }
         
         # Configuración de estilo
@@ -54,8 +56,7 @@ class WeatherKnowledgeGraphVisualizer:
                 self.entity_types[entity['id']] = entity['type']
             
             # Agregar aristas (relaciones)
-            for relation in data['relations']:
-                self.graph.add_edge(
+            for relation in data['relations']:                self.graph.add_edge(
                     relation['source'],
                     relation['target'],
                     relation_type=relation['relation_type'],
@@ -76,21 +77,52 @@ class WeatherKnowledgeGraphVisualizer:
         """
         Crea un layout jerárquico del grafo basado en los tipos de entidades
         """
-        # Separar nodos por tipo
+        # Separar nodos por tipo para el grafo extendido
         weather_nodes = [n for n, d in self.graph.nodes(data=True) if d['type'] == 'weather_condition']
+        road_nodes = [n for n, d in self.graph.nodes(data=True) if d['type'] == 'road_type']
+        surface_nodes = [n for n, d in self.graph.nodes(data=True) if d['type'] == 'surface_type']
+        factor_nodes = [n for n, d in self.graph.nodes(data=True) if d['type'] == 'transport_factor']
         impact_nodes = [n for n, d in self.graph.nodes(data=True) if d['type'] == 'transport_impact']
+        vehicle_nodes = [n for n, d in self.graph.nodes(data=True) if d['type'] == 'vehicle_type']
         
         pos = {}
         
-        # Posicionar condiciones climáticas en el lado izquierdo
-        y_positions_weather = np.linspace(1, 0, len(weather_nodes))
-        for i, node in enumerate(weather_nodes):
-            pos[node] = (0, y_positions_weather[i])
+        # Layout en columnas para mejor organización
+        # Columna 1: Condiciones climáticas (izquierda)
+        if weather_nodes:
+            y_positions_weather = np.linspace(1, 0, len(weather_nodes))
+            for i, node in enumerate(weather_nodes):
+                pos[node] = (0, y_positions_weather[i])
         
-        # Posicionar impactos de transporte en el lado derecho
-        y_positions_impact = np.linspace(1, 0, len(impact_nodes))
-        for i, node in enumerate(impact_nodes):
-            pos[node] = (2, y_positions_impact[i])
+        # Columna 2: Tipos de carretera
+        if road_nodes:
+            y_positions_road = np.linspace(1, 0, len(road_nodes))
+            for i, node in enumerate(road_nodes):
+                pos[node] = (1, y_positions_road[i])
+        
+        # Columna 3: Tipos de superficie
+        if surface_nodes:
+            y_positions_surface = np.linspace(1, 0, len(surface_nodes))
+            for i, node in enumerate(surface_nodes):
+                pos[node] = (2, y_positions_surface[i])
+        
+        # Columna 4: Factores de transporte
+        if factor_nodes:
+            y_positions_factor = np.linspace(1, 0, len(factor_nodes))
+            for i, node in enumerate(factor_nodes):
+                pos[node] = (3, y_positions_factor[i])
+        
+        # Columna 5: Impactos de transporte (derecha)
+        if impact_nodes:
+            y_positions_impact = np.linspace(1, 0, len(impact_nodes))
+            for i, node in enumerate(impact_nodes):
+                pos[node] = (4, y_positions_impact[i])
+        
+        # Columna 6: Tipos de vehículo (si existen)
+        if vehicle_nodes:
+            y_positions_vehicle = np.linspace(1, 0, len(vehicle_nodes))
+            for i, node in enumerate(vehicle_nodes):
+                pos[node] = (5, y_positions_vehicle[i])
         
         return pos
     
@@ -115,7 +147,6 @@ class WeatherKnowledgeGraphVisualizer:
                 base_angle + 0.3, 
                 len(nodes_of_type)
             )
-            
             radius = 2 if entity_type == 'weather_condition' else 1.5
             
             for j, node in enumerate(nodes_of_type):
@@ -125,13 +156,14 @@ class WeatherKnowledgeGraphVisualizer:
         
         return pos
     
-    def visualize_basic_graph(self, layout_type='hierarchical', save_path=None):
+    def visualize_basic_graph(self, layout_type='hierarchical', save_path=None, title=None):
         """
         Crea una visualización básica del grafo de conocimiento
         
         Args:
             layout_type: 'hierarchical', 'circular', 'spring'
             save_path: Ruta donde guardar la imagen (opcional)
+            title: Título personalizado para el gráfico (opcional)
         """
         plt.figure(figsize=(16, 12))
         
@@ -391,5 +423,85 @@ def main():
     print("\nMostrando visualización interactiva básica...")
     visualizer.visualize_basic_graph(layout_type='hierarchical')
 
+def visualize_extended_knowledge_graph():
+    """Función específica para visualizar el grafo de conocimiento extendido"""
+    # Ruta al archivo del grafo extendido
+    extended_kg_file = "extended_knowledge_graph.json"
+    
+    # Verificar que existe el archivo
+    if not os.path.exists(extended_kg_file):
+        print(f"Error: No se encontró el archivo {extended_kg_file}")
+        print("Ejecuta primero: python extended_knowledge_graph.py")
+        return
+    
+    # Crear visualizador para el grafo extendido
+    print("Cargando grafo de conocimiento extendido...")
+    visualizer = WeatherKnowledgeGraphVisualizer(extended_kg_file)
+    
+    # Crear directorio para visualizaciones extendidas
+    output_dir = "extended_knowledge_graph_visualizations"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    print("Generando visualizaciones del grafo extendido...")
+    
+    # Visualización jerárquica extendida
+    plt.figure(figsize=(16, 12))
+    visualizer.visualize_basic_graph(
+        title='Grafo de Conocimiento Extendido - Optimización de Rutas\n(Incluye tipos de calles, superficies y factores de transporte)',
+        layout_type='hierarchical',
+        save_path=os.path.join(output_dir, 'extended_knowledge_graph_hierarchical.png')
+    )
+    
+    # Visualización circular extendida
+    plt.figure(figsize=(14, 14))
+    visualizer.visualize_basic_graph(
+        title='Grafo de Conocimiento Extendido - Vista Circular',
+        layout_type='circular',
+        save_path=os.path.join(output_dir, 'extended_knowledge_graph_circular.png')
+    )
+    
+    # Visualización detallada con todas las etiquetas
+    visualizer.visualize_detailed_graph(
+        save_path=os.path.join(output_dir, 'extended_knowledge_graph_detailed.png')
+    )
+    
+    # Matriz de relaciones
+    visualizer.create_matrix_visualization(
+        save_path=os.path.join(output_dir, 'extended_knowledge_graph_matrix.png')
+    )
+    
+    print(f"\nTodas las visualizaciones del grafo extendido guardadas en: {output_dir}")
+    
+    # Mostrar estadísticas del grafo extendido
+    print("\n=== ESTADÍSTICAS DEL GRAFO EXTENDIDO ===")
+    print(f"Nodos totales: {visualizer.graph.number_of_nodes()}")
+    print(f"Relaciones totales: {visualizer.graph.number_of_edges()}")
+    
+    # Contar entidades por tipo
+    entity_types = {}
+    for node, data in visualizer.graph.nodes(data=True):
+        entity_type = data.get('type', 'unknown')
+        entity_types[entity_type] = entity_types.get(entity_type, 0) + 1
+    
+    print("\nDistribución de entidades:")
+    for entity_type, count in sorted(entity_types.items()):
+        print(f"  {entity_type}: {count}")
+    
+    # Contar relaciones por tipo
+    relation_types = {}
+    for _, _, data in visualizer.graph.edges(data=True):
+        relation_type = data.get('relation_type', 'unknown')
+        relation_types[relation_type] = relation_types.get(relation_type, 0) + 1
+    
+    print("\nTipos de relaciones:")
+    for relation_type, count in sorted(relation_types.items()):
+        print(f"  {relation_type}: {count}")
+
 if __name__ == "__main__":
+    # Ejecutar ambas visualizaciones
+    print("=== VISUALIZACIÓN DEL GRAFO CLIMÁTICO ORIGINAL ===")
     main()
+    
+    print("\n" + "="*60)
+    print("=== VISUALIZACIÓN DEL GRAFO EXTENDIDO ===")
+    visualize_extended_knowledge_graph()

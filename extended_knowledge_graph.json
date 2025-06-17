@@ -1,0 +1,1166 @@
+{
+  "entities": [
+    {
+      "id": "clear_sky",
+      "name": "Cielo Despejado",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "excellent",
+        "precipitation": 0,
+        "wind_factor": 0.1,
+        "impact_multiplier": 1.0
+      }
+    },
+    {
+      "id": "light_clouds",
+      "name": "Nubosidad Ligera",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "good",
+        "precipitation": 0,
+        "wind_factor": 0.2,
+        "impact_multiplier": 1.05
+      }
+    },
+    {
+      "id": "heavy_clouds",
+      "name": "Nubosidad Densa",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "moderate",
+        "precipitation": 0,
+        "wind_factor": 0.3,
+        "impact_multiplier": 1.1
+      }
+    },
+    {
+      "id": "light_rain",
+      "name": "Lluvia Ligera",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "reduced",
+        "precipitation": 2,
+        "wind_factor": 0.4,
+        "impact_multiplier": 1.2
+      }
+    },
+    {
+      "id": "moderate_rain",
+      "name": "Lluvia Moderada",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "poor",
+        "precipitation": 5,
+        "wind_factor": 0.6,
+        "impact_multiplier": 1.4
+      }
+    },
+    {
+      "id": "heavy_rain",
+      "name": "Lluvia Intensa",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "very_poor",
+        "precipitation": 10,
+        "wind_factor": 0.8,
+        "impact_multiplier": 1.7
+      }
+    },
+    {
+      "id": "storm",
+      "name": "Tormenta",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "extremely_poor",
+        "precipitation": 15,
+        "wind_factor": 1.0,
+        "impact_multiplier": 2.0
+      }
+    },
+    {
+      "id": "motorway",
+      "name": "Autopista",
+      "type": "road_type",
+      "properties": {
+        "weather_resistance": 0.8,
+        "capacity": "very_high",
+        "speed_limit": 120,
+        "lanes": "4+",
+        "surface_quality": "excellent",
+        "maintenance_level": "high"
+      }
+    },
+    {
+      "id": "trunk",
+      "name": "Vía Principal",
+      "type": "road_type",
+      "properties": {
+        "weather_resistance": 0.85,
+        "capacity": "high",
+        "speed_limit": 90,
+        "lanes": "2-4",
+        "surface_quality": "very_good",
+        "maintenance_level": "high"
+      }
+    },
+    {
+      "id": "primary",
+      "name": "Carretera Primaria",
+      "type": "road_type",
+      "properties": {
+        "weather_resistance": 0.9,
+        "capacity": "medium_high",
+        "speed_limit": 70,
+        "lanes": "2-4",
+        "surface_quality": "good",
+        "maintenance_level": "medium_high"
+      }
+    },
+    {
+      "id": "secondary",
+      "name": "Carretera Secundaria",
+      "type": "road_type",
+      "properties": {
+        "weather_resistance": 1.0,
+        "capacity": "medium",
+        "speed_limit": 50,
+        "lanes": "2",
+        "surface_quality": "good",
+        "maintenance_level": "medium"
+      }
+    },
+    {
+      "id": "tertiary",
+      "name": "Carretera Terciaria",
+      "type": "road_type",
+      "properties": {
+        "weather_resistance": 1.1,
+        "capacity": "medium_low",
+        "speed_limit": 40,
+        "lanes": "1-2",
+        "surface_quality": "fair",
+        "maintenance_level": "medium"
+      }
+    },
+    {
+      "id": "residential",
+      "name": "Calle Residencial",
+      "type": "road_type",
+      "properties": {
+        "weather_resistance": 1.2,
+        "capacity": "low",
+        "speed_limit": 30,
+        "lanes": "1-2",
+        "surface_quality": "fair",
+        "maintenance_level": "low"
+      }
+    },
+    {
+      "id": "service",
+      "name": "Calle de Servicio",
+      "type": "road_type",
+      "properties": {
+        "weather_resistance": 1.3,
+        "capacity": "very_low",
+        "speed_limit": 20,
+        "lanes": "1",
+        "surface_quality": "poor",
+        "maintenance_level": "low"
+      }
+    },
+    {
+      "id": "track",
+      "name": "Camino Sin Pavimentar",
+      "type": "road_type",
+      "properties": {
+        "weather_resistance": 1.5,
+        "capacity": "very_low",
+        "speed_limit": 15,
+        "lanes": "1",
+        "surface_quality": "poor",
+        "maintenance_level": "very_low"
+      }
+    },
+    {
+      "id": "path",
+      "name": "Sendero",
+      "type": "road_type",
+      "properties": {
+        "weather_resistance": 1.8,
+        "capacity": "minimal",
+        "speed_limit": 10,
+        "lanes": "0-1",
+        "surface_quality": "very_poor",
+        "maintenance_level": "none"
+      }
+    },
+    {
+      "id": "asphalt",
+      "name": "Asfalto",
+      "type": "surface_type",
+      "properties": {
+        "weather_factor": 1.0,
+        "durability": "high",
+        "grip": "good",
+        "drainage": "moderate",
+        "maintenance_cost": "medium"
+      }
+    },
+    {
+      "id": "concrete",
+      "name": "Concreto",
+      "type": "surface_type",
+      "properties": {
+        "weather_factor": 0.9,
+        "durability": "very_high",
+        "grip": "excellent",
+        "drainage": "good",
+        "maintenance_cost": "low"
+      }
+    },
+    {
+      "id": "paved",
+      "name": "Pavimentado",
+      "type": "surface_type",
+      "properties": {
+        "weather_factor": 1.0,
+        "durability": "high",
+        "grip": "good",
+        "drainage": "moderate",
+        "maintenance_cost": "medium"
+      }
+    },
+    {
+      "id": "unpaved",
+      "name": "Sin Pavimentar",
+      "type": "surface_type",
+      "properties": {
+        "weather_factor": 1.4,
+        "durability": "low",
+        "grip": "poor",
+        "drainage": "poor",
+        "maintenance_cost": "high"
+      }
+    },
+    {
+      "id": "gravel",
+      "name": "Grava",
+      "type": "surface_type",
+      "properties": {
+        "weather_factor": 1.3,
+        "durability": "medium",
+        "grip": "fair",
+        "drainage": "good",
+        "maintenance_cost": "medium"
+      }
+    },
+    {
+      "id": "dirt",
+      "name": "Tierra",
+      "type": "surface_type",
+      "properties": {
+        "weather_factor": 1.6,
+        "durability": "very_low",
+        "grip": "very_poor",
+        "drainage": "very_poor",
+        "maintenance_cost": "very_high"
+      }
+    },
+    {
+      "id": "grass",
+      "name": "Césped",
+      "type": "surface_type",
+      "properties": {
+        "weather_factor": 1.8,
+        "durability": "very_low",
+        "grip": "very_poor",
+        "drainage": "poor",
+        "maintenance_cost": "very_high"
+      }
+    },
+    {
+      "id": "lane_count",
+      "name": "Número de Carriles",
+      "type": "transport_factor",
+      "properties": {
+        "description": "Afecta la disponibilidad de rutas alternativas",
+        "base_factor": 1.0,
+        "reduction_per_lane": 0.1,
+        "min_factor": 0.8
+      }
+    },
+    {
+      "id": "traffic_density",
+      "name": "Densidad de Tráfico",
+      "type": "transport_factor",
+      "properties": {
+        "description": "Afecta la velocidad y tiempo de viaje",
+        "low": 1.0,
+        "medium": 1.3,
+        "high": 1.7,
+        "very_high": 2.2
+      }
+    },
+    {
+      "id": "vehicle_capacity",
+      "name": "Capacidad del Vehículo",
+      "type": "transport_factor",
+      "properties": {
+        "description": "Determina la cantidad de entregas por ruta",
+        "default_capacity": 100,
+        "weight_limit": "kg",
+        "volume_limit": "m3"
+      }
+    },
+    {
+      "id": "delivery_demand",
+      "name": "Demanda de Entrega",
+      "type": "transport_factor",
+      "properties": {
+        "description": "Cantidad requerida en cada punto de entrega",
+        "default_demand": 1,
+        "unit": "packages",
+        "affects_route_planning": true
+      }
+    },
+    {
+      "id": "reduced_visibility",
+      "name": "Visibilidad Reducida",
+      "type": "transport_impact",
+      "properties": {
+        "severity": "medium",
+        "affects_speed": true,
+        "safety_concern": true,
+        "time_penalty": 1.2
+      }
+    },
+    {
+      "id": "wet_surface",
+      "name": "Superficie Mojada",
+      "type": "transport_impact",
+      "properties": {
+        "severity": "medium",
+        "affects_speed": true,
+        "safety_concern": true,
+        "time_penalty": 1.3
+      }
+    },
+    {
+      "id": "flooding_risk",
+      "name": "Riesgo de Inundación",
+      "type": "transport_impact",
+      "properties": {
+        "severity": "high",
+        "affects_route": true,
+        "safety_concern": true,
+        "time_penalty": 2.0
+      }
+    },
+    {
+      "id": "road_damage",
+      "name": "Daño en Carretera",
+      "type": "transport_impact",
+      "properties": {
+        "severity": "high",
+        "affects_route": true,
+        "maintenance_required": true,
+        "time_penalty": 1.8
+      }
+    }
+  ],
+  "relations": [
+    {
+      "source": "clear_sky",
+      "target": "motorway",
+      "relation_type": "affects_road_performance",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.95,
+        "impact_type": "travel_time_multiplier",
+        "severity": "low"
+      }
+    },
+    {
+      "source": "clear_sky",
+      "target": "trunk",
+      "relation_type": "affects_road_performance",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.95,
+        "impact_type": "travel_time_multiplier",
+        "severity": "low"
+      }
+    },
+    {
+      "source": "clear_sky",
+      "target": "primary",
+      "relation_type": "affects_road_performance",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.95,
+        "impact_type": "travel_time_multiplier",
+        "severity": "low"
+      }
+    },
+    {
+      "source": "clear_sky",
+      "target": "secondary",
+      "relation_type": "affects_road_performance",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.95,
+        "impact_type": "travel_time_multiplier",
+        "severity": "low"
+      }
+    },
+    {
+      "source": "clear_sky",
+      "target": "tertiary",
+      "relation_type": "affects_road_performance",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.95,
+        "impact_type": "travel_time_multiplier",
+        "severity": "low"
+      }
+    },
+    {
+      "source": "clear_sky",
+      "target": "residential",
+      "relation_type": "affects_road_performance",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.95,
+        "impact_type": "travel_time_multiplier",
+        "severity": "low"
+      }
+    },
+    {
+      "source": "clear_sky",
+      "target": "service",
+      "relation_type": "affects_road_performance",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.9,
+        "impact_type": "travel_time_multiplier",
+        "severity": "low"
+      }
+    },
+    {
+      "source": "clear_sky",
+      "target": "track",
+      "relation_type": "affects_road_performance",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.9,
+        "impact_type": "travel_time_multiplier",
+        "severity": "low"
+      }
+    },
+    {
+      "source": "clear_sky",
+      "target": "path",
+      "relation_type": "affects_road_performance",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.85,
+        "impact_type": "travel_time_multiplier",
+        "severity": "low"
+      }
+    },
+    {
+      "source": "light_rain",
+      "target": "motorway",
+      "relation_type": "affects_road_performance",
+      "weight": 1.1,
+      "properties": {
+        "confidence": 0.9,
+        "impact_type": "travel_time_multiplier",
+        "severity": "low"
+      }
+    },
+    {
+      "source": "light_rain",
+      "target": "trunk",
+      "relation_type": "affects_road_performance",
+      "weight": 1.15,
+      "properties": {
+        "confidence": 0.85,
+        "impact_type": "travel_time_multiplier",
+        "severity": "low"
+      }
+    },
+    {
+      "source": "light_rain",
+      "target": "primary",
+      "relation_type": "affects_road_performance",
+      "weight": 1.2,
+      "properties": {
+        "confidence": 0.8,
+        "impact_type": "travel_time_multiplier",
+        "severity": "low"
+      }
+    },
+    {
+      "source": "light_rain",
+      "target": "secondary",
+      "relation_type": "affects_road_performance",
+      "weight": 1.3,
+      "properties": {
+        "confidence": 0.75,
+        "impact_type": "travel_time_multiplier",
+        "severity": "medium"
+      }
+    },
+    {
+      "source": "light_rain",
+      "target": "tertiary",
+      "relation_type": "affects_road_performance",
+      "weight": 1.4,
+      "properties": {
+        "confidence": 0.7,
+        "impact_type": "travel_time_multiplier",
+        "severity": "medium"
+      }
+    },
+    {
+      "source": "light_rain",
+      "target": "residential",
+      "relation_type": "affects_road_performance",
+      "weight": 1.5,
+      "properties": {
+        "confidence": 0.65,
+        "impact_type": "travel_time_multiplier",
+        "severity": "medium"
+      }
+    },
+    {
+      "source": "light_rain",
+      "target": "service",
+      "relation_type": "affects_road_performance",
+      "weight": 1.7,
+      "properties": {
+        "confidence": 0.6,
+        "impact_type": "travel_time_multiplier",
+        "severity": "medium"
+      }
+    },
+    {
+      "source": "light_rain",
+      "target": "track",
+      "relation_type": "affects_road_performance",
+      "weight": 2.0,
+      "properties": {
+        "confidence": 0.5,
+        "impact_type": "travel_time_multiplier",
+        "severity": "high"
+      }
+    },
+    {
+      "source": "light_rain",
+      "target": "path",
+      "relation_type": "affects_road_performance",
+      "weight": 2.5,
+      "properties": {
+        "confidence": 0.4,
+        "impact_type": "travel_time_multiplier",
+        "severity": "high"
+      }
+    },
+    {
+      "source": "moderate_rain",
+      "target": "motorway",
+      "relation_type": "affects_road_performance",
+      "weight": 1.2,
+      "properties": {
+        "confidence": 0.85,
+        "impact_type": "travel_time_multiplier",
+        "severity": "low"
+      }
+    },
+    {
+      "source": "moderate_rain",
+      "target": "trunk",
+      "relation_type": "affects_road_performance",
+      "weight": 1.3,
+      "properties": {
+        "confidence": 0.8,
+        "impact_type": "travel_time_multiplier",
+        "severity": "medium"
+      }
+    },
+    {
+      "source": "moderate_rain",
+      "target": "primary",
+      "relation_type": "affects_road_performance",
+      "weight": 1.4,
+      "properties": {
+        "confidence": 0.75,
+        "impact_type": "travel_time_multiplier",
+        "severity": "medium"
+      }
+    },
+    {
+      "source": "moderate_rain",
+      "target": "secondary",
+      "relation_type": "affects_road_performance",
+      "weight": 1.6,
+      "properties": {
+        "confidence": 0.7,
+        "impact_type": "travel_time_multiplier",
+        "severity": "medium"
+      }
+    },
+    {
+      "source": "moderate_rain",
+      "target": "tertiary",
+      "relation_type": "affects_road_performance",
+      "weight": 1.8,
+      "properties": {
+        "confidence": 0.65,
+        "impact_type": "travel_time_multiplier",
+        "severity": "medium"
+      }
+    },
+    {
+      "source": "moderate_rain",
+      "target": "residential",
+      "relation_type": "affects_road_performance",
+      "weight": 2.0,
+      "properties": {
+        "confidence": 0.6,
+        "impact_type": "travel_time_multiplier",
+        "severity": "high"
+      }
+    },
+    {
+      "source": "moderate_rain",
+      "target": "service",
+      "relation_type": "affects_road_performance",
+      "weight": 2.3,
+      "properties": {
+        "confidence": 0.55,
+        "impact_type": "travel_time_multiplier",
+        "severity": "high"
+      }
+    },
+    {
+      "source": "moderate_rain",
+      "target": "track",
+      "relation_type": "affects_road_performance",
+      "weight": 2.8,
+      "properties": {
+        "confidence": 0.45,
+        "impact_type": "travel_time_multiplier",
+        "severity": "very_high"
+      }
+    },
+    {
+      "source": "moderate_rain",
+      "target": "path",
+      "relation_type": "affects_road_performance",
+      "weight": 3.5,
+      "properties": {
+        "confidence": 0.35,
+        "impact_type": "travel_time_multiplier",
+        "severity": "very_high"
+      }
+    },
+    {
+      "source": "heavy_rain",
+      "target": "motorway",
+      "relation_type": "affects_road_performance",
+      "weight": 1.4,
+      "properties": {
+        "confidence": 0.8,
+        "impact_type": "travel_time_multiplier",
+        "severity": "medium"
+      }
+    },
+    {
+      "source": "heavy_rain",
+      "target": "trunk",
+      "relation_type": "affects_road_performance",
+      "weight": 1.6,
+      "properties": {
+        "confidence": 0.75,
+        "impact_type": "travel_time_multiplier",
+        "severity": "medium"
+      }
+    },
+    {
+      "source": "heavy_rain",
+      "target": "primary",
+      "relation_type": "affects_road_performance",
+      "weight": 1.8,
+      "properties": {
+        "confidence": 0.7,
+        "impact_type": "travel_time_multiplier",
+        "severity": "medium"
+      }
+    },
+    {
+      "source": "heavy_rain",
+      "target": "secondary",
+      "relation_type": "affects_road_performance",
+      "weight": 2.2,
+      "properties": {
+        "confidence": 0.65,
+        "impact_type": "travel_time_multiplier",
+        "severity": "high"
+      }
+    },
+    {
+      "source": "heavy_rain",
+      "target": "tertiary",
+      "relation_type": "affects_road_performance",
+      "weight": 2.6,
+      "properties": {
+        "confidence": 0.6,
+        "impact_type": "travel_time_multiplier",
+        "severity": "very_high"
+      }
+    },
+    {
+      "source": "heavy_rain",
+      "target": "residential",
+      "relation_type": "affects_road_performance",
+      "weight": 3.0,
+      "properties": {
+        "confidence": 0.55,
+        "impact_type": "travel_time_multiplier",
+        "severity": "very_high"
+      }
+    },
+    {
+      "source": "heavy_rain",
+      "target": "service",
+      "relation_type": "affects_road_performance",
+      "weight": 3.5,
+      "properties": {
+        "confidence": 0.5,
+        "impact_type": "travel_time_multiplier",
+        "severity": "very_high"
+      }
+    },
+    {
+      "source": "heavy_rain",
+      "target": "track",
+      "relation_type": "affects_road_performance",
+      "weight": 4.2,
+      "properties": {
+        "confidence": 0.4,
+        "impact_type": "travel_time_multiplier",
+        "severity": "very_high"
+      }
+    },
+    {
+      "source": "heavy_rain",
+      "target": "path",
+      "relation_type": "affects_road_performance",
+      "weight": 5.0,
+      "properties": {
+        "confidence": 0.3,
+        "impact_type": "travel_time_multiplier",
+        "severity": "very_high"
+      }
+    },
+    {
+      "source": "storm",
+      "target": "motorway",
+      "relation_type": "affects_road_performance",
+      "weight": 1.8,
+      "properties": {
+        "confidence": 0.7,
+        "impact_type": "travel_time_multiplier",
+        "severity": "medium"
+      }
+    },
+    {
+      "source": "storm",
+      "target": "trunk",
+      "relation_type": "affects_road_performance",
+      "weight": 2.2,
+      "properties": {
+        "confidence": 0.65,
+        "impact_type": "travel_time_multiplier",
+        "severity": "high"
+      }
+    },
+    {
+      "source": "storm",
+      "target": "primary",
+      "relation_type": "affects_road_performance",
+      "weight": 2.6,
+      "properties": {
+        "confidence": 0.6,
+        "impact_type": "travel_time_multiplier",
+        "severity": "very_high"
+      }
+    },
+    {
+      "source": "storm",
+      "target": "secondary",
+      "relation_type": "affects_road_performance",
+      "weight": 3.2,
+      "properties": {
+        "confidence": 0.55,
+        "impact_type": "travel_time_multiplier",
+        "severity": "very_high"
+      }
+    },
+    {
+      "source": "storm",
+      "target": "tertiary",
+      "relation_type": "affects_road_performance",
+      "weight": 3.8,
+      "properties": {
+        "confidence": 0.5,
+        "impact_type": "travel_time_multiplier",
+        "severity": "very_high"
+      }
+    },
+    {
+      "source": "storm",
+      "target": "residential",
+      "relation_type": "affects_road_performance",
+      "weight": 4.5,
+      "properties": {
+        "confidence": 0.45,
+        "impact_type": "travel_time_multiplier",
+        "severity": "very_high"
+      }
+    },
+    {
+      "source": "storm",
+      "target": "service",
+      "relation_type": "affects_road_performance",
+      "weight": 5.2,
+      "properties": {
+        "confidence": 0.4,
+        "impact_type": "travel_time_multiplier",
+        "severity": "very_high"
+      }
+    },
+    {
+      "source": "storm",
+      "target": "track",
+      "relation_type": "affects_road_performance",
+      "weight": 6.0,
+      "properties": {
+        "confidence": 0.3,
+        "impact_type": "travel_time_multiplier",
+        "severity": "very_high"
+      }
+    },
+    {
+      "source": "storm",
+      "target": "path",
+      "relation_type": "affects_road_performance",
+      "weight": 7.0,
+      "properties": {
+        "confidence": 0.2,
+        "impact_type": "travel_time_multiplier",
+        "severity": "very_high"
+      }
+    },
+    {
+      "source": "concrete",
+      "target": "motorway",
+      "relation_type": "typical_surface_for",
+      "weight": 0.9,
+      "properties": {
+        "confidence": 0.95,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "asphalt",
+      "target": "motorway",
+      "relation_type": "typical_surface_for",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.9,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "asphalt",
+      "target": "trunk",
+      "relation_type": "typical_surface_for",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.95,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "asphalt",
+      "target": "primary",
+      "relation_type": "typical_surface_for",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.9,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "asphalt",
+      "target": "secondary",
+      "relation_type": "typical_surface_for",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.85,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "paved",
+      "target": "tertiary",
+      "relation_type": "typical_surface_for",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.8,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "asphalt",
+      "target": "residential",
+      "relation_type": "typical_surface_for",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.7,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "paved",
+      "target": "residential",
+      "relation_type": "typical_surface_for",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.6,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "asphalt",
+      "target": "service",
+      "relation_type": "typical_surface_for",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.5,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "unpaved",
+      "target": "service",
+      "relation_type": "typical_surface_for",
+      "weight": 1.4,
+      "properties": {
+        "confidence": 0.4,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "gravel",
+      "target": "track",
+      "relation_type": "typical_surface_for",
+      "weight": 1.3,
+      "properties": {
+        "confidence": 0.8,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "dirt",
+      "target": "track",
+      "relation_type": "typical_surface_for",
+      "weight": 1.6,
+      "properties": {
+        "confidence": 0.7,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "unpaved",
+      "target": "track",
+      "relation_type": "typical_surface_for",
+      "weight": 1.4,
+      "properties": {
+        "confidence": 0.9,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "dirt",
+      "target": "path",
+      "relation_type": "typical_surface_for",
+      "weight": 1.6,
+      "properties": {
+        "confidence": 0.8,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "grass",
+      "target": "path",
+      "relation_type": "typical_surface_for",
+      "weight": 1.8,
+      "properties": {
+        "confidence": 0.6,
+        "relationship_type": "composition"
+      }
+    },
+    {
+      "source": "lane_count",
+      "target": "reduced_visibility",
+      "relation_type": "influences_impact",
+      "weight": 0.8,
+      "properties": {
+        "confidence": 0.9,
+        "relationship_type": "causation"
+      }
+    },
+    {
+      "source": "traffic_density",
+      "target": "reduced_visibility",
+      "relation_type": "influences_impact",
+      "weight": 1.5,
+      "properties": {
+        "confidence": 0.85,
+        "relationship_type": "causation"
+      }
+    },
+    {
+      "source": "vehicle_capacity",
+      "target": "wet_surface",
+      "relation_type": "influences_impact",
+      "weight": 1.2,
+      "properties": {
+        "confidence": 0.8,
+        "relationship_type": "causation"
+      }
+    },
+    {
+      "source": "delivery_demand",
+      "target": "flooding_risk",
+      "relation_type": "influences_impact",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.7,
+        "relationship_type": "causation"
+      }
+    },
+    {
+      "source": "lane_count",
+      "target": "road_damage",
+      "relation_type": "influences_impact",
+      "weight": 0.7,
+      "properties": {
+        "confidence": 0.9,
+        "relationship_type": "causation"
+      }
+    },
+    {
+      "source": "traffic_density",
+      "target": "road_damage",
+      "relation_type": "influences_impact",
+      "weight": 1.8,
+      "properties": {
+        "confidence": 0.95,
+        "relationship_type": "causation"
+      }
+    },
+    {
+      "source": "light_rain",
+      "target": "unpaved",
+      "relation_type": "optimization_factor",
+      "weight": 2.0,
+      "properties": {
+        "confidence": 0.95,
+        "affects_route_planning": true,
+        "optimization_impact": "negative"
+      }
+    },
+    {
+      "source": "moderate_rain",
+      "target": "dirt",
+      "relation_type": "optimization_factor",
+      "weight": 2.5,
+      "properties": {
+        "confidence": 0.9,
+        "affects_route_planning": true,
+        "optimization_impact": "negative"
+      }
+    },
+    {
+      "source": "heavy_rain",
+      "target": "grass",
+      "relation_type": "optimization_factor",
+      "weight": 3.0,
+      "properties": {
+        "confidence": 0.85,
+        "affects_route_planning": true,
+        "optimization_impact": "negative"
+      }
+    },
+    {
+      "source": "storm",
+      "target": "unpaved",
+      "relation_type": "optimization_factor",
+      "weight": 3.5,
+      "properties": {
+        "confidence": 0.9,
+        "affects_route_planning": true,
+        "optimization_impact": "negative"
+      }
+    },
+    {
+      "source": "lane_count",
+      "target": "motorway",
+      "relation_type": "optimization_factor",
+      "weight": 0.8,
+      "properties": {
+        "confidence": 0.9,
+        "affects_route_planning": true,
+        "optimization_impact": "positive"
+      }
+    },
+    {
+      "source": "traffic_density",
+      "target": "residential",
+      "relation_type": "optimization_factor",
+      "weight": 1.5,
+      "properties": {
+        "confidence": 0.8,
+        "affects_route_planning": true,
+        "optimization_impact": "neutral"
+      }
+    },
+    {
+      "source": "flooding_risk",
+      "target": "track",
+      "relation_type": "optimization_factor",
+      "weight": 2.0,
+      "properties": {
+        "confidence": 0.95,
+        "affects_route_planning": true,
+        "optimization_impact": "negative"
+      }
+    },
+    {
+      "source": "road_damage",
+      "target": "unpaved",
+      "relation_type": "optimization_factor",
+      "weight": 1.8,
+      "properties": {
+        "confidence": 0.9,
+        "affects_route_planning": true,
+        "optimization_impact": "negative"
+      }
+    }
+  ]
+}
