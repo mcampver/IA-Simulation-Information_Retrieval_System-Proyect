@@ -50,6 +50,55 @@ function App() {
   const trailsRef = useRef({});
   const wsRef = useRef(null);
 
+  // Función para manejar clics en el mapa - MOVER DENTRO DEL COMPONENTE
+  const handleMapClick = (info) => {
+    // Solo procesamos clics que efectivamente hayan seleccionado un nodo
+    if (!info.object) return;
+    
+    // Extraemos el nodo seleccionado (necesitamos el ID y la posición)
+    const nodeId = info.object.id;
+    const position = [info.object.lon, info.object.lat];
+    
+    if (!nodeId) return;
+    
+    const selectedNode = {
+      id: nodeId,
+      position: position
+    };
+    
+    if (selectionMode === "depot") {
+      // Si estamos seleccionando el depósito, reemplazamos el actual
+      setSelectedDepot(selectedNode);
+      // Automáticamente cambiamos al modo de selección de objetivos
+      setSelectionMode("targets");
+    } else {
+      // Si estamos seleccionando objetivos, verificamos que no esté ya seleccionado
+      // y que no sea el depósito
+      if (selectedDepot && selectedNode.id === selectedDepot.id) {
+        return; // No permitimos seleccionar el depósito como objetivo
+      }
+      
+      const alreadySelected = selectedTargets.some(target => target.id === selectedNode.id);
+      if (!alreadySelected) {
+        setSelectedTargets([...selectedTargets, selectedNode]);
+      }
+    }
+  };
+
+  // Función para limpiar selecciones - MOVER DENTRO DEL COMPONENTE
+  const handleClearSelection = (type, index) => {
+    if (!type || type === "all") {
+      setSelectedDepot(null);
+      setSelectedTargets([]);
+    } else if (type === "depot") {
+      setSelectedDepot(null);
+    } else if (type === "target" && typeof index === 'number') {
+      const newTargets = [...selectedTargets];
+      newTargets.splice(index, 1);
+      setSelectedTargets(newTargets);
+    }
+  };
+
   // 1) Cargamos pedidos de demo
   useEffect(() => {
     // Manejo mejorado de la conexión WebSocket
@@ -353,55 +402,6 @@ function App() {
     </>
   );
 }
-
-// Función para manejar clics en el mapa
-const handleMapClick = (info) => {
-  // Solo procesamos clics que efectivamente hayan seleccionado un nodo
-  if (!info.object) return;
-  
-  // Extraemos el nodo seleccionado (necesitamos el ID y la posición)
-  const nodeId = info.object.id;
-  const position = [info.object.lon, info.object.lat];
-  
-  if (!nodeId) return;
-  
-  const selectedNode = {
-    id: nodeId,
-    position: position
-  };
-  
-  if (selectionMode === "depot") {
-    // Si estamos seleccionando el depósito, reemplazamos el actual
-    setSelectedDepot(selectedNode);
-    // Automáticamente cambiamos al modo de selección de objetivos
-    setSelectionMode("targets");
-  } else {
-    // Si estamos seleccionando objetivos, verificamos que no esté ya seleccionado
-    // y que no sea el depósito
-    if (selectedDepot && selectedNode.id === selectedDepot.id) {
-      return; // No permitimos seleccionar el depósito como objetivo
-    }
-    
-    const alreadySelected = selectedTargets.some(target => target.id === selectedNode.id);
-    if (!alreadySelected) {
-      setSelectedTargets([...selectedTargets, selectedNode]);
-    }
-  }
-};
-
-// Función para limpiar selecciones
-const handleClearSelection = (type, index) => {
-  if (!type || type === "all") {
-    setSelectedDepot(null);
-    setSelectedTargets([]);
-  } else if (type === "depot") {
-    setSelectedDepot(null);
-  } else if (type === "target" && typeof index === 'number') {
-    const newTargets = [...selectedTargets];
-    newTargets.splice(index, 1);
-    setSelectedTargets(newTargets);
-  }
-};
 
 export default App;
 
