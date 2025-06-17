@@ -41,9 +41,9 @@ class TrafficCrawler(BaseCrawler):
             print("HTML no recuperado")
             return []
 
-        return self.parse(response)
+        return self.parse(response, False)
 
-    def parse(self, response: requests.Response) -> List[Dict[str, Any]]:
+    def parse(self, response: requests.Response, filter : bool) -> List[Dict[str, Any]]:
         """
         1. Convierte la respuesta text en un objeto BeautifulSoup.
         2. Busca todos los articulos que representen noticias.
@@ -98,6 +98,26 @@ class TrafficCrawler(BaseCrawler):
                 "date": fecha_iso,
                 "snippet": snippet,
             })
+            print(resultados[0].get("title"))
+
+            if filter :
+                self.filter_response(resultados)
+                print(resultados[0].get("title"))
 
         return resultados
+
+    """
+    Filtra los articulos que no son de La Habana
+    """    
+    def filter_response(self, all_articles: List[Dict[str, Any]]):
+
+        for art in all_articles:
+            title: str = art.get("title")
+
+            if title.__contains__("La Habana"):
+                continue
+            else:
+                all_articles.remove(art)
+
+        return
 
