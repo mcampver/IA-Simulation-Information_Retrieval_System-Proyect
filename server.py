@@ -211,6 +211,29 @@ async def handler(websocket):
                 if message_type == 'optimization_request':
                     # Manejar solicitud de optimización
                     await handle_optimization_request(websocket, data)
+                
+                # Añadir este bloque para manejar solicitudes de nodos del mapa
+                elif message_type == 'request_map_nodes':
+                    # Preparar datos de nodos para enviar al cliente
+                    map_nodes = []
+                    for node_id in all_nodes:
+                        try:
+                            node_data = street_graph.nodes[node_id]
+                            map_nodes.append({
+                                "id": node_id,
+                                "lat": node_data.get('lat'),
+                                "lon": node_data.get('lon')
+                            })
+                        except (KeyError, TypeError) as e:
+                            print(f"Error al procesar el nodo {node_id}: {e}")
+                            continue
+                    
+                    # Enviar nodos al cliente
+                    await websocket.send(json.dumps({
+                        "type": "map_nodes",
+                        "nodes": map_nodes
+                    }))
+                
                 # Aquí puedes manejar otros tipos de mensajes si es necesario
                 
             except json.JSONDecodeError:

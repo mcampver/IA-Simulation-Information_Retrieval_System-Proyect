@@ -2,7 +2,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import { DeckGL } from "deck.gl";
 import { Map } from "react-map-gl/maplibre";
-import { IconLayer, ScatterplotLayer, PathLayer } from "@deck.gl/layers";
+import { ScatterplotLayer, IconLayer, PathLayer } from "@deck.gl/layers";
+import { PickingInfo } from "@deck.gl/core";
 import OptimizationForm from "./components/OptimizationForm";
 import RouteInfo from "./components/RouteInfo";
 import StatusPanel from "./components/StatusPanel";
@@ -35,12 +36,16 @@ function App() {
   const [optimizationParams, setOptimizationParams] = useState({
     start_point: "",
     target_points: [],
-    num_trucks: 3,
-    truck_capacities: [10, 10, 10],
+    num_trucks: 0,
+    truck_capacities: [],
     target_demands: {}
   });
   const [selectedRouteId, setSelectedRouteId] = useState(null);
   const [showDetailedStats, setShowDetailedStats] = useState(false);
+  const [selectionMode, setSelectionMode] = useState("depot"); // "depot" o "targets"
+  const [selectedDepot, setSelectedDepot] = useState(null);
+  const [selectedTargets, setSelectedTargets] = useState([]);
+  const [mapNodes, setMapNodes] = useState([]);
   
   const trailsRef = useRef({});
   const wsRef = useRef(null);
@@ -58,6 +63,11 @@ function App() {
           console.log("Conexión WebSocket establecida");
           setConnectionStatus("Conectado");
           setErrorMessage("");
+          
+          // Solicitar los nodos del mapa
+          ws.send(JSON.stringify({
+            type: 'request_map_nodes'
+          }));
         };
 
         ws.onmessage = (event) => {
@@ -109,6 +119,16 @@ function App() {
             // Si hay un error de optimización
             if (data.type === 'optimization_error') {
               setErrorMessage(data.message);
+            }
+            
+            // Si es una respuesta con los nodos del mapa
+            if (data.type === 'map_nodes') {
+              setMapNodes(data.nodes.map(node => ({
+                id: node.id,
+                position: [node.lon, node.lat],
+                lon: node.lon,
+                lat: node.lat
+              })));
             }
             
           } catch (err) {
@@ -211,6 +231,28 @@ function App() {
       }
     }),
     
+    // Capa para nodos seleccionados
+    new ScatterplotLayer({
+      id: 'selected-nodes',
+      data: [
+        ...(selectedDepot ? [{...selectedDepot, type: 'depot'}] : []),
+        ...selectedTargets.map(target => ({...target, type: 'target'}))
+      ],
+      pickable: true,
+      stroked: true,
+      filled: true,
+      lineWidthUnits: 'pixels',
+      lineWidthScale: 2,
+      getPosition: d => d.position,
+      getRadius: d => d.type === 'depot' ? 15 : 10,
+      getFillColor: d => d.type === 'depot' ? [0, 255, 0, 200] : [0, 128, 255, 200],
+      getLineColor: [255, 255, 255],
+      getLineWidth: 2,
+      onHover: (info) => {
+        // Mostrar tooltip con información del nodo si se desea
+      }
+    }),
+
     // Capas existentes
     new IconLayer({
       id: "vehicle-icons",
@@ -237,6 +279,20 @@ function App() {
       getRadius: 10,
       radiusMinPixels: 2,
     }),
+
+    // Modificar tu capa de semáforos o añadir una capa específica para nodos clickeables
+    new ScatterplotLayer({
+      id: "map-nodes",
+      data: mapNodes,
+      pickable: true,
+      stroked: true,
+      filled: true,
+      opacity: 0.4,
+      getPosition: d => d.position,
+      getRadius: 5,
+      getFillColor: [100, 100, 100],
+      onClick: handleMapClick
+    }),
   ];
   
   // Agregamos un panel para mostrar la información de las rutas
@@ -256,14 +312,11 @@ function App() {
         <OptimizationForm 
           onSubmit={requestOptimization}
           setOptimizedRoutes={setOptimizedRoutes}
-          initialValues={{
-            start_point: "",
-            target_points: [],
-            num_trucks: 3,
-            truck_capacities: [10, 10, 10],
-            target_demands: {},
-            ...(optimizationParams || {})
-          }} 
+          selectionMode={selectionMode}
+          setSelectionMode={setSelectionMode}
+          selectedDepot={selectedDepot}
+          selectedTargets={selectedTargets}
+          onClearSelection={handleClearSelection}
         />
       }
       
@@ -300,6 +353,55 @@ function App() {
     </>
   );
 }
+
+// Función para manejar clics en el mapa
+const handleMapClick = (info) => {
+  // Solo procesamos clics que efectivamente hayan seleccionado un nodo
+  if (!info.object) return;
+  
+  // Extraemos el nodo seleccionado (necesitamos el ID y la posición)
+  const nodeId = info.object.id;
+  const position = [info.object.lon, info.object.lat];
+  
+  if (!nodeId) return;
+  
+  const selectedNode = {
+    id: nodeId,
+    position: position
+  };
+  
+  if (selectionMode === "depot") {
+    // Si estamos seleccionando el depósito, reemplazamos el actual
+    setSelectedDepot(selectedNode);
+    // Automáticamente cambiamos al modo de selección de objetivos
+    setSelectionMode("targets");
+  } else {
+    // Si estamos seleccionando objetivos, verificamos que no esté ya seleccionado
+    // y que no sea el depósito
+    if (selectedDepot && selectedNode.id === selectedDepot.id) {
+      return; // No permitimos seleccionar el depósito como objetivo
+    }
+    
+    const alreadySelected = selectedTargets.some(target => target.id === selectedNode.id);
+    if (!alreadySelected) {
+      setSelectedTargets([...selectedTargets, selectedNode]);
+    }
+  }
+};
+
+// Función para limpiar selecciones
+const handleClearSelection = (type, index) => {
+  if (!type || type === "all") {
+    setSelectedDepot(null);
+    setSelectedTargets([]);
+  } else if (type === "depot") {
+    setSelectedDepot(null);
+  } else if (type === "target" && typeof index === 'number') {
+    const newTargets = [...selectedTargets];
+    newTargets.splice(index, 1);
+    setSelectedTargets(newTargets);
+  }
+};
 
 export default App;
 
