@@ -1,0 +1,7 @@
+setup.py
+vns_solver.cpp
+vns_solver.egg-info/PKG-INFO
+vns_solver.egg-info/SOURCES.txt
+vns_solver.egg-info/dependency_links.txt
+vns_solver.egg-info/not-zip-safe
+vns_solver.egg-info/top_level.txt

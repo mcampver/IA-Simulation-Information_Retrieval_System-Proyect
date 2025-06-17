@@ -1,0 +1,7 @@
+ag_solver.cpp
+setup.py
+ag_solver.egg-info/PKG-INFO
+ag_solver.egg-info/SOURCES.txt
+ag_solver.egg-info/dependency_links.txt
+ag_solver.egg-info/not-zip-safe
+ag_solver.egg-info/top_level.txt

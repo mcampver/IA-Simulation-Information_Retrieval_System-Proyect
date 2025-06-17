@@ -1,0 +1,227 @@
+{
+  "entities": [
+    {
+      "id": "clear_sky",
+      "name": "Cielo Despejado",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "excellent",
+        "precipitation": 0,
+        "wind_factor": 0.1
+      }
+    },
+    {
+      "id": "light_clouds",
+      "name": "Nubosidad Ligera",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "good",
+        "precipitation": 0,
+        "wind_factor": 0.2
+      }
+    },
+    {
+      "id": "heavy_clouds",
+      "name": "Nubosidad Densa",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "moderate",
+        "precipitation": 0,
+        "wind_factor": 0.3
+      }
+    },
+    {
+      "id": "light_rain",
+      "name": "Lluvia Ligera",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "reduced",
+        "precipitation": 2,
+        "wind_factor": 0.4
+      }
+    },
+    {
+      "id": "moderate_rain",
+      "name": "Lluvia Moderada",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "poor",
+        "precipitation": 5,
+        "wind_factor": 0.6
+      }
+    },
+    {
+      "id": "heavy_rain",
+      "name": "Lluvia Intensa",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "very_poor",
+        "precipitation": 10,
+        "wind_factor": 0.8
+      }
+    },
+    {
+      "id": "thunderstorm",
+      "name": "Tormenta",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "very_poor",
+        "precipitation": 15,
+        "wind_factor": 1.0
+      }
+    },
+    {
+      "id": "fog",
+      "name": "Niebla",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "very_poor",
+        "precipitation": 0,
+        "wind_factor": 0.2
+      }
+    },
+    {
+      "id": "strong_wind",
+      "name": "Viento Fuerte",
+      "type": "weather_condition",
+      "properties": {
+        "visibility": "moderate",
+        "precipitation": 0,
+        "wind_factor": 0.9
+      }
+    },
+    {
+      "id": "normal_speed",
+      "name": "Velocidad Normal",
+      "type": "transport_impact",
+      "properties": {
+        "speed_factor": 1.0,
+        "risk_level": "low",
+        "delay_probability": 0.05
+      }
+    },
+    {
+      "id": "reduced_speed",
+      "name": "Velocidad Reducida",
+      "type": "transport_impact",
+      "properties": {
+        "speed_factor": 0.8,
+        "risk_level": "moderate",
+        "delay_probability": 0.15
+      }
+    },
+    {
+      "id": "slow_speed",
+      "name": "Velocidad Lenta",
+      "type": "transport_impact",
+      "properties": {
+        "speed_factor": 0.6,
+        "risk_level": "high",
+        "delay_probability": 0.3
+      }
+    },
+    {
+      "id": "very_slow_speed",
+      "name": "Velocidad Muy Lenta",
+      "type": "transport_impact",
+      "properties": {
+        "speed_factor": 0.4,
+        "risk_level": "very_high",
+        "delay_probability": 0.5
+      }
+    },
+    {
+      "id": "dangerous_conditions",
+      "name": "Condiciones Peligrosas",
+      "type": "transport_impact",
+      "properties": {
+        "speed_factor": 0.2,
+        "risk_level": "extreme",
+        "delay_probability": 0.8
+      }
+    }
+  ],
+  "relations": [
+    {
+      "source": "clear_sky",
+      "target": "normal_speed",
+      "relation_type": "causes",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.95
+      }
+    },
+    {
+      "source": "light_clouds",
+      "target": "normal_speed",
+      "relation_type": "causes",
+      "weight": 0.9,
+      "properties": {
+        "confidence": 0.9
+      }
+    },
+    {
+      "source": "heavy_clouds",
+      "target": "reduced_speed",
+      "relation_type": "causes",
+      "weight": 0.8,
+      "properties": {
+        "confidence": 0.85
+      }
+    },
+    {
+      "source": "light_rain",
+      "target": "reduced_speed",
+      "relation_type": "causes",
+      "weight": 0.9,
+      "properties": {
+        "confidence": 0.9
+      }
+    },
+    {
+      "source": "moderate_rain",
+      "target": "slow_speed",
+      "relation_type": "causes",
+      "weight": 0.9,
+      "properties": {
+        "confidence": 0.95
+      }
+    },
+    {
+      "source": "heavy_rain",
+      "target": "very_slow_speed",
+      "relation_type": "causes",
+      "weight": 0.95,
+      "properties": {
+        "confidence": 0.98
+      }
+    },
+    {
+      "source": "fog",
+      "target": "slow_speed",
+      "relation_type": "causes",
+      "weight": 0.85,
+      "properties": {
+        "confidence": 0.9
+      }
+    },
+    {
+      "source": "strong_wind",
+      "target": "reduced_speed",
+      "relation_type": "causes",
+      "weight": 0.75,
+      "properties": {
+        "confidence": 0.8
+      }
+    },
+    {
+      "source": "thunderstorm",
+      "target": "dangerous_conditions",
+      "relation_type": "causes",
+      "weight": 1.0,
+      "properties": {
+        "confidence": 0.99
+      }
+    }
+  ]
+}

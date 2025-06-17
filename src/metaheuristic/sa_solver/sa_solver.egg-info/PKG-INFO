@@ -1,0 +1,9 @@
+Metadata-Version: 2.2
+Name: sa_solver
+Version: 0.1
+Summary: VRP Solver avanzado con AG y mejoras multi-hilo
+Author: Abel Ponce Gonzalez
+Author-email: abelponce03@gmail.com
+Dynamic: author
+Dynamic: author-email
+Dynamic: summary

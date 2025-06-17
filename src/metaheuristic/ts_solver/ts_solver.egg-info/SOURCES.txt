@@ -1,0 +1,7 @@
+setup.py
+ts_solver.cpp
+ts_solver.egg-info/PKG-INFO
+ts_solver.egg-info/SOURCES.txt
+ts_solver.egg-info/dependency_links.txt
+ts_solver.egg-info/not-zip-safe
+ts_solver.egg-info/top_level.txt
