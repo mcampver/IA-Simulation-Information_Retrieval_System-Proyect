@@ -86,11 +86,24 @@ function App() {
               });
 
               setVehicleData(updated);
-              setTrafficLights(data.traffic_lights || []);
+              setTrafficLights(data.traffic_lights || []);            }
+              // Si es un error de optimización
+            if (data.type === 'optimization_error') {
+              console.error("Error de optimización:", data.message);
+              setErrorMessage(`Error: ${data.message}`);
+              setConnectionStatus("Error en optimización");
             }
-              // Si es una respuesta de optimización
+            
+            // Si es un mensaje de progreso de optimización
+            if (data.type === 'optimization_progress') {
+              console.log("Progreso de optimización:", data.message);
+              setConnectionStatus(`Optimizando: ${data.message}`);
+            }
+              
+            // Si es una respuesta de optimización
             if (data.type === 'optimization_result') {
               console.log("Recibidos resultados de optimización:", data);
+              setConnectionStatus("Conectado");  // Resetear estado de conexión
               
               // Guardar información climática si está disponible
               if (data.weather_info) {
@@ -195,18 +208,37 @@ function App() {
       pickable: true,
       widthScale: 1,
       widthMinPixels: 2,
-      getPath: d => d.path,
-      getColor: d => {
-        // Aplicar efectos de color basados en clima
-        if (weatherInfo && weatherInfo.impact_factor > 1.6) {
-          // Rutas más rojas/naranjas para condiciones adversas
-          return d.id === selectedRouteId ? [255, 255, 255] : [255, 100, 100];
-        } else if (weatherInfo && weatherInfo.impact_factor > 1.3) {
-          // Rutas amarillas para condiciones moderadas
-          return d.id === selectedRouteId ? [255, 255, 255] : [255, 180, 0];
+      getPath: d => d.path,      getColor: d => {
+        // Si la ruta está seleccionada, usar blanco
+        if (d.id === selectedRouteId) {
+          return [255, 255, 255, 255];
         }
-        // Color normal
-        return d.id === selectedRouteId ? [255, 255, 255] : d.color;
+        
+        // Obtener el color base único para cada vehículo
+        const routeIndex = parseInt(d.id.split('-')[1]) || 0;
+        const baseColor = getRouteColor(routeIndex);
+        
+        // Aplicar modificaciones sutiles por clima MANTENIENDO la diferenciación por vehículo
+        if (weatherInfo && weatherInfo.impact_factor > 1.6) {
+          // Condiciones adversas: oscurecer levemente pero mantener diferencias
+          return [
+            Math.max(baseColor[0] * 0.8, 80),
+            Math.max(baseColor[1] * 0.8, 80),
+            Math.max(baseColor[2] * 0.8, 80),
+            255
+          ];
+        } else if (weatherInfo && weatherInfo.impact_factor > 1.3) {
+          // Condiciones moderadas: ajuste muy sutil 
+          return [
+            Math.min(255, baseColor[0] * 1.05),
+            Math.min(255, baseColor[1] * 1.02),
+            Math.min(255, baseColor[2] * 0.98),
+            255
+          ];
+        }
+        
+        // Clima normal: usar color original con alpha completo
+        return [...baseColor, 255];
       },
       getWidth: d => {
         // Ancho de línea basado en clima
@@ -338,17 +370,16 @@ function App() {
       >
         <Map reuseMaps mapLib={import("maplibre-gl")} mapStyle={MAP_STYLE} />
       </DeckGL>
-      
-      {/* Botón para toggle del panel climático */}
+        {/* Botón para toggle del panel climático */}
       {weatherInfo && (
         <button 
           className="weather-toggle-btn"
           onClick={() => setShowWeatherPanel(!showWeatherPanel)}
           style={{
             position: 'fixed',
-            bottom: '20px',
+            bottom: '90px',
             left: '20px',
-            zIndex: 1000,
+            zIndex: 400,
             background: 'rgba(79, 70, 229, 0.9)',
             color: 'white',
             border: 'none',
@@ -368,6 +399,7 @@ function App() {
             e.target.style.transform = 'scale(1)';
             e.target.style.background = 'rgba(79, 70, 229, 0.9)';
           }}
+          title={showWeatherPanel ? 'Ocultar panel climático' : 'Mostrar panel climático'}
         >
           {showWeatherPanel ? '🌤️' : '🌦️'}
         </button>

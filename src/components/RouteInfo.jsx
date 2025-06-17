@@ -1,18 +1,18 @@
 import React from 'react';
 
-const RouteInfo = ({ routes, onSelectRoute }) => (
-  <div style={{
-    position: 'absolute',
+const RouteInfo = ({ routes, onSelectRoute }) => (  <div style={{
+    position: 'fixed',
     bottom: '20px',
     right: '20px',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     padding: '15px',
     borderRadius: '8px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
     maxWidth: '320px',
-    maxHeight: '40%',
+    maxHeight: '40vh',
     overflowY: 'auto',
-    zIndex: 100
+    zIndex: 250,
+    backdropFilter: 'blur(5px)'
   }}>
     <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: 'bold' }}>
       Rutas Optimizadas

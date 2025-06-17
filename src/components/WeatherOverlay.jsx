@@ -30,11 +30,9 @@ const WeatherOverlay = ({ weatherInfo, position = 'top-right' }) => {
     'top-left': { top: '20px', left: '20px' },
     'bottom-right': { bottom: '20px', right: '20px' },
     'bottom-left': { bottom: '20px', left: '20px' },
-  };
-
-  const overlayStyles = {
+  };  const overlayStyles = {
     position: 'fixed',
-    zIndex: 1000,
+    zIndex: 200,  // Menor que RouteInfo
     pointerEvents: 'none',
     ...positionStyle[position]
   };

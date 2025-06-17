@@ -276,8 +276,16 @@ async def handle_optimization_request(websocket, data):
             except Exception as e:
                 print(f"Error obteniendo datos climáticos: {e}")
                 weather_info = {"error": str(e)}
-            
-        # Realizar la optimización (con análisis climático integrado)
+              # Realizar la optimización (con análisis climático integrado)
+        print(f"Iniciando optimización para {len(target_points)} puntos con {num_trucks} vehículos...")
+        
+        # Enviar mensaje de progreso al cliente
+        await websocket.send(json.dumps({
+            "type": "optimization_progress",
+            "message": f"Calculando rutas para {len(target_points)} destinos...",
+            "progress": 10
+        }))
+        
         routes, total_cost = optimize_delivery_routes(
             street_graph=street_graph,
             start_point=start_point,
@@ -287,6 +295,13 @@ async def handle_optimization_request(websocket, data):
             target_demands=target_demands,
             use_weather_impact=True  # Habilitar análisis climático
         )
+        
+        # Enviar progreso de formateo
+        await websocket.send(json.dumps({
+            "type": "optimization_progress", 
+            "message": "Preparando resultados...",
+            "progress": 90
+        }))
         
         # Preparar resultados para enviar al cliente
         if routes:

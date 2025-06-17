@@ -333,6 +333,81 @@ class WeatherImpactAnalyzer:
             
         except Exception as e:
             print(f"Error exportando reporte: {e}")
+    
+    def get_differentiated_weather_factors(self, weather_data: Dict[str, Any] = None) -> Dict[str, float]:
+        """
+        Obtiene factores de impacto climático diferenciados por tipo de carretera
+        
+        Returns:
+            Dict con factores específicos para diferentes tipos de infraestructura
+        """
+        # Obtener datos del clima si no se proporcionan
+        if weather_data is None:
+            weather_data = self.get_current_weather_sync()
+            if weather_data is None:
+                return {
+                    'motorway': 1.0,
+                    'primary': 1.0,
+                    'secondary': 1.0,
+                    'residential': 1.0,
+                    'unpaved': 1.0
+                }
+        
+        precipitation = weather_data.get('precipitation', 0)
+        wind_speed = weather_data.get('wind_speed_10m', 0)
+        visibility = weather_data.get('visibility', 10000)
+        temperature = weather_data.get('temperature_2m', 25)
+        cloud_cover = weather_data.get('cloud_cover', 0)
+        
+        # Factores base por condiciones específicas
+        factors = {
+            'motorway': 1.0,      # Autopistas base
+            'primary': 1.0,       # Carreteras principales base
+            'secondary': 1.0,     # Carreteras secundarias base
+            'residential': 1.0,   # Calles residenciales base
+            'unpaved': 1.0        # Caminos sin pavimentar base
+        }
+        
+        # Ajustes por precipitación (afecta más a caminos sin pavimentar)
+        if precipitation > 0:
+            rain_intensity = min(precipitation / 20.0, 1.0)  # Normalizar
+            factors['motorway'] += rain_intensity * 0.2      # +20% máximo
+            factors['primary'] += rain_intensity * 0.3       # +30% máximo
+            factors['secondary'] += rain_intensity * 0.5     # +50% máximo
+            factors['residential'] += rain_intensity * 0.7   # +70% máximo
+            factors['unpaved'] += rain_intensity * 1.2       # +120% máximo
+        
+        # Ajustes por viento (afecta más a carreteras expuestas)
+        if wind_speed > 20:  # Viento moderado a fuerte
+            wind_intensity = min((wind_speed - 20) / 30.0, 1.0)  # Normalizar
+            factors['motorway'] += wind_intensity * 0.4      # Más expuestas
+            factors['primary'] += wind_intensity * 0.3
+            factors['secondary'] += wind_intensity * 0.2
+            factors['residential'] += wind_intensity * 0.1   # Más protegidas
+            factors['unpaved'] += wind_intensity * 0.6       # Muy afectadas
+        
+        # Ajustes por visibilidad (niebla, etc.)
+        if visibility < 5000:  # Visibilidad reducida
+            visibility_factor = 1.0 - (visibility / 5000.0)
+            factors['motorway'] += visibility_factor * 0.8    # Velocidades altas = más peligroso
+            factors['primary'] += visibility_factor * 0.6
+            factors['secondary'] += visibility_factor * 0.4
+            factors['residential'] += visibility_factor * 0.3  # Velocidades bajas
+            factors['unpaved'] += visibility_factor * 0.5
+        
+        # Ajustes por temperatura extrema
+        if temperature < 5 or temperature > 40:
+            temp_stress = 0.1 if abs(temperature - 22.5) < 17.5 else 0.2
+            for road_type in factors:
+                factors[road_type] += temp_stress
+        
+        # Ajustes por nubosidad (puede indicar tormentas próximas)
+        if cloud_cover > 80:
+            storm_risk = 0.1
+            for road_type in factors:
+                factors[road_type] += storm_risk
+        
+        return factors
 
 
 # Función de conveniencia para usar en otros módulos
@@ -348,6 +423,25 @@ def get_weather_impact_for_routes() -> float:
     except Exception as e:
         print(f"Error obteniendo factor climático: {e}")
         return 1.0  # Factor neutral si hay error
+
+def get_differentiated_weather_factors() -> Dict[str, float]:
+    """
+    Función para obtener factores climáticos diferenciados por tipo de carretera
+    Para usar en el módulo de optimización de rutas
+    """
+    try:
+        analyzer = WeatherImpactAnalyzer()
+        factors = analyzer.get_differentiated_weather_factors()
+        return factors
+    except Exception as e:
+        print(f"Error obteniendo factores climáticos diferenciados: {e}")
+        return {
+            'motorway': 1.0,
+            'primary': 1.0,
+            'secondary': 1.0,
+            'residential': 1.0,
+            'unpaved': 1.0
+        }
 
 
 if __name__ == "__main__":

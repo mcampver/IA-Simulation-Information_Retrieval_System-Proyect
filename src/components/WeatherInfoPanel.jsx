@@ -67,18 +67,20 @@ const WeatherInfoPanel = ({ weatherInfo, isVisible }) => {
 
   const impactColors = getImpactColor(animatedFactor);
   const progressPercent = getProgressPercentage(animatedFactor);
-
   // Estilos inline para evitar problemas con styled-jsx
   const panelStyles = {
     position: 'fixed',
-    top: '70px',
+    top: '80px',
     left: '20px',
-    zIndex: 1000,
+    zIndex: 300,
     background: 'rgba(255, 255, 255, 0.95)',
     borderRadius: '12px',
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-    margin: '10px',
-    maxWidth: '350px',
+    maxWidth: '340px',
+    width: 'calc(100vw - 440px)', // Responsive width
+    minWidth: '280px',
+    maxHeight: 'calc(100vh - 200px)', // Responsive height
+    overflowY: 'auto',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     border: '1px solid rgba(0, 0, 0, 0.1)',
     backdropFilter: 'blur(10px)',

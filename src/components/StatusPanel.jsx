@@ -39,9 +39,9 @@ const StatusPanel = ({
       )}
 
       {/* Vehicle Count */}
-      <div className="status-item">
+      {/* <div className="status-item">
         <strong>🚛 Vehículos:</strong> {vehicleCount}
-      </div>
+      </div> */}
 
       {/* Weather Summary */}
       {weatherInfo && (
@@ -72,14 +72,12 @@ const StatusPanel = ({
         onClick={() => setShowOptimizationForm(!showOptimizationForm)}
       >
         {showOptimizationForm ? "Ocultar Optimización" : "Mostrar Optimización"}
-      </button>
-
-      <style jsx>{`
+      </button>      <style jsx>{`
         .status-panel {
-          position: absolute;
+          position: fixed;
           top: 10px;
           left: 10px;
-          z-index: 1100;
+          z-index: 250;
           padding: 16px;
           background: rgba(255, 255, 255, 0.95);
           backdrop-filter: blur(10px);
