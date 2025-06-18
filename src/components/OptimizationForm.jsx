@@ -1,72 +1,118 @@
-import React, { useState, memo } from "react";
+import React, { useState } from 'react';
+import { basePanel, getZonePosition, Z_LAYERS } from './LayoutManager';
 
-const OptimizationForm = memo(({ 
+const OptimizationForm = ({ 
   onSubmit, 
-  setOptimizedRoutes, 
   selectionMode, 
   setSelectionMode, 
   selectedDepot, 
-  selectedTargets,
-  onClearSelection
+  selectedTargets, 
+  onClearSelection 
 }) => {
-  const [localNumTrucks, setLocalNumTrucks] = useState(3);
-  const [showAIPanel, setShowAIPanel] = useState(false);
-  const [aiDescription, setAiDescription] = useState("");
-  const [aiResponse, setAiResponse] = useState("");
+  const [description, setDescription] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiParams, setAiParams] = useState(null);
-  const [aiError, setAiError] = useState("");
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [showManualConfig, setShowManualConfig] = useState(false);
   
-  const handleOptimize = () => {
-    // Validación antes de enviar
+  // Estados para configuración manual (fallback)
+  const [numTrucks, setNumTrucks] = useState(2);
+  const [capacities, setCapacities] = useState([100, 100]);
+  const [demands, setDemands] = useState({});
+
+  const panelStyles = {
+    ...basePanel,
+    ...getZonePosition('centerRight'), // Cambiado a la derecha
+    zIndex: Z_LAYERS.panels,
+    width: '380px', // Aumentado para más espacio
+    maxHeight: '75vh',
+    overflowY: 'auto'
+  };
+
+  const headerStyles = {
+    background: 'linear-gradient(135deg, #dc2626, #ef4444)',
+    color: 'white',
+    padding: '12px 15px',
+    borderRadius: '12px 12px 0 0',
+    position: 'sticky',
+    top: 0,
+    zIndex: 1
+  };
+
+  const sectionStyles = {
+    marginBottom: '20px',
+    padding: '12px',
+    backgroundColor: '#f9fafb',
+    borderRadius: '8px',
+    border: '1px solid #f3f4f6'
+  };
+
+  const sectionTitleStyles = {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px'
+  };
+
+  const buttonStyles = {
+    padding: '8px 12px',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: '500',
+    transition: 'all 0.3s ease',
+    margin: '2px'
+  };
+
+  const primaryButtonStyles = {
+    ...buttonStyles,
+    backgroundColor: '#3b82f6',
+    color: 'white'
+  };
+
+  const secondaryButtonStyles = {
+    ...buttonStyles,
+    backgroundColor: '#f3f4f6',
+    color: '#374151',
+    border: '1px solid #d1d5db'
+  };
+
+  const inputStyles = {
+    width: '100%',
+    padding: '8px 12px',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    fontSize: '14px',
+    marginBottom: '8px'
+  };
+
+  const textareaStyles = {
+    ...inputStyles,
+    minHeight: '80px',
+    resize: 'vertical',
+    fontFamily: 'inherit'
+  };
+
+  // Función para analizar con IA
+  const analyzeWithAI = async () => {
     if (!selectedDepot || selectedTargets.length === 0) {
-      alert("Por favor, seleccione un punto de inicio y al menos un nodo objetivo en el mapa.");
+      alert('Debe seleccionar un depósito y al menos un objetivo antes de analizar');
       return;
     }
 
-    // Usar parámetros de la IA si están disponibles, sino usar valores por defecto
-    const optimizationData = {
-      start_point: selectedDepot.id,
-      target_points: selectedTargets.map(target => target.id),
-      num_trucks: aiParams ? aiParams.num_trucks : parseInt(localNumTrucks, 10),
-      truck_capacities: aiParams ? aiParams.truck_capacities : [],
-      target_demands: aiParams ? aiParams.target_demands : {}
-    };
-    
-    onSubmit(optimizationData);
-  };
-  
-  const handleClear = () => {
-    // Limpiar rutas y selecciones
-    setOptimizedRoutes([]);
-    onClearSelection();
-    setAiParams(null);
-    setAiResponse("");
-    setAiDescription("");
-    setAiError("");
-  };
-
-  const handleAIAnalysis = async () => {
-    if (!selectedDepot || selectedTargets.length === 0) {
-      alert("Por favor, seleccione primero el depósito y los puntos objetivo en el mapa.");
-      return;
-    }
-
-    if (!aiDescription.trim()) {
-      alert("Por favor, describe los requerimientos de tu problema de ruteo.");
+    if (!description.trim()) {
+      alert('Describe los requerimientos para tu problema de ruteo');
       return;
     }
 
     setIsAnalyzing(true);
-    setAiResponse("");
-    setAiError("");
-    setAiParams(null);
-
+    
     try {
-      console.log("Enviando solicitud a la IA...");
-      
-      // Cambiar la URL del fetch para usar el puerto correcto
-      const response = await fetch('http://localhost:8767/analyze_cvrp', {  // Puerto 8766, no 8765
+      // Cambiar la URL para apuntar al servidor HTTP correcto
+      const response = await fetch('http://localhost:8767/analyze_cvrp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -74,353 +120,318 @@ const OptimizationForm = memo(({
         body: JSON.stringify({
           depot_info: selectedDepot,
           targets_info: selectedTargets,
-          user_description: aiDescription
+          user_description: description
         })
       });
 
-      console.log("Respuesta recibida:", response.status);
-
       if (!response.ok) {
-        throw new Error(`Error del servidor: ${response.status} ${response.statusText}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
-      console.log("Resultado del análisis:", result);
-
+      
       if (result.success) {
-        setAiParams(result.params);
-        setAiResponse(result.message);
-        setLocalNumTrucks(result.params.num_trucks);
-        setAiError("");
+        setAnalysisResult(result);
+        // Auto-llenar los parámetros analizados
+        setNumTrucks(result.params.num_trucks);
+        setCapacities(result.params.truck_capacities);
+        
+        // Convertir demandas de array a objeto indexado por ID
+        const demandsObj = {};
+        selectedTargets.forEach((target, index) => {
+          demandsObj[target.id] = result.params.target_demands[index] || 1;
+        });
+        setDemands(demandsObj);
+        
       } else {
-        setAiError(result.message || "Error en el análisis");
-        setAiParams(null);
-        setAiResponse("");
+        alert(`Error en el análisis: ${result.message}`);
+        setShowManualConfig(true); // Mostrar configuración manual como fallback
       }
-
     } catch (error) {
-      console.error('Error en análisis de IA:', error);
-      setAiError(`Error de conexión: ${error.message}`);
-      setAiParams(null);
-      setAiResponse("");
+      console.error('Error al analizar con IA:', error);
+      alert(`Error conectando con el servidor: ${error.message}`);
+      setShowManualConfig(true);
     } finally {
       setIsAnalyzing(false);
     }
   };
-  
+
+  const handleSubmit = () => {
+    if (!selectedDepot || selectedTargets.length === 0) {
+      alert('Debe seleccionar un depósito y al menos un objetivo');
+      return;
+    }
+
+    // Preparar demandas como array en el orden correcto
+    const target_demands = selectedTargets.map(target => demands[target.id] || 1);
+
+    onSubmit({
+      start_point: selectedDepot.id,
+      target_points: selectedTargets.map(t => t.id),
+      num_trucks: numTrucks,
+      truck_capacities: capacities,
+      target_demands: target_demands
+    });
+  };
+
   return (
-    <div style={{
-      position: "absolute",
-      top: "10px",
-      right: "10px",
-      zIndex: 100,
-      padding: "15px",
-      backgroundColor: "rgba(255,255,255,0.95)",
-      borderRadius: "8px",
-      boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
-      maxWidth: showAIPanel ? "550px" : "350px",
-      maxHeight: "85vh",
-      overflowY: "auto"
-    }}>
-      <h3 style={{ marginTop: 0 }}>Optimización de Rutas</h3>
+    <div style={panelStyles}>
+      <div style={headerStyles}>
+        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>
+          🤖 Optimización Inteligente
+        </h3>
+      </div>
       
-      {/* Sección de selección de nodos */}
-      <div style={{ marginBottom: "15px" }}>
-        <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+      <div style={{ padding: '15px' }}>
+        {/* Sección de Selección */}
+        <div style={sectionStyles}>
+          <div style={sectionTitleStyles}>
+            <span>📍</span>
+            Selección de Puntos
+          </div>
+          
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '6px' }}>
+              Modo actual: {selectionMode === 'depot' ? '🏭 Depósito' : '🎯 Objetivos'}
+            </div>
+            
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button 
+                style={{
+                  ...buttonStyles,
+                  backgroundColor: selectionMode === 'depot' ? '#3b82f6' : '#f3f4f6',
+                  color: selectionMode === 'depot' ? 'white' : '#374151'
+                }}
+                onClick={() => setSelectionMode('depot')}
+              >
+                🏭 Depósito
+              </button>
+              <button 
+                style={{
+                  ...buttonStyles,
+                  backgroundColor: selectionMode === 'targets' ? '#3b82f6' : '#f3f4f6',
+                  color: selectionMode === 'targets' ? 'white' : '#374151'
+                }}
+                onClick={() => setSelectionMode('targets')}
+              >
+                🎯 Objetivos
+              </button>
+            </div>
+          </div>
+          
+          {/* Estado de selección */}
+          <div style={{ fontSize: '12px' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px',
+              marginBottom: '4px',
+              color: selectedDepot ? '#059669' : '#9ca3af'
+            }}>
+              <span>{selectedDepot ? '✅' : '⭕'}</span>
+              Depósito: {selectedDepot ? `Nodo ${selectedDepot.id}` : 'No seleccionado'}
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px',
+              color: selectedTargets.length > 0 ? '#059669' : '#9ca3af'
+            }}>
+              <span>{selectedTargets.length > 0 ? '✅' : '⭕'}</span>
+              Objetivos: {selectedTargets.length} seleccionados
+            </div>
+          </div>
+          
           <button 
-            onClick={() => setSelectionMode("depot")}
             style={{
-              flex: 1,
-              padding: "8px",
-              backgroundColor: selectionMode === "depot" ? "#4CAF50" : "#e0e0e0",
-              color: selectionMode === "depot" ? "white" : "black",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontWeight: selectionMode === "depot" ? "bold" : "normal"
+              ...secondaryButtonStyles,
+              width: '100%',
+              marginTop: '8px'
             }}
+            onClick={() => onClearSelection('all')}
           >
-            Seleccionar Depósito
+            🗑️ Limpiar Selección
+          </button>
+        </div>
+
+        {/* Sección de Análisis IA */}
+        <div style={sectionStyles}>
+          <div style={sectionTitleStyles}>
+            <span>🤖</span>
+            Análisis Inteligente
+          </div>
+          
+          <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '6px' }}>
+            Describe tu problema de ruteo:
+          </label>
+          <textarea 
+            style={textareaStyles}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Ej: Necesito repartir productos alimenticios a 3 tiendas. Cada tienda necesita entre 10-20 cajas. Tengo 2 camiones con capacidad de 50 cajas cada uno."
+          />
+          
+          <button 
+            style={{
+              ...primaryButtonStyles,
+              width: '100%',
+              padding: '10px',
+              backgroundColor: isAnalyzing ? '#9ca3af' : '#10b981',
+              fontSize: '13px'
+            }}
+            onClick={analyzeWithAI}
+            disabled={isAnalyzing || !selectedDepot || selectedTargets.length === 0}
+          >
+            {isAnalyzing ? '🔄 Analizando...' : '🧠 Analizar con IA'}
           </button>
           
           <button 
-            onClick={() => setSelectionMode("targets")}
             style={{
-              flex: 1,
-              padding: "8px",
-              backgroundColor: selectionMode === "targets" ? "#2196F3" : "#e0e0e0",
-              color: selectionMode === "targets" ? "white" : "black",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontWeight: selectionMode === "targets" ? "bold" : "normal"
+              ...secondaryButtonStyles,
+              width: '100%',
+              marginTop: '6px',
+              fontSize: '12px'
             }}
+            onClick={() => setShowManualConfig(!showManualConfig)}
           >
-            Seleccionar Objetivos
+            ⚙️ {showManualConfig ? 'Ocultar' : 'Mostrar'} Configuración Manual
+          </button>
+        </div>
+
+        {/* Resultado del Análisis */}
+        {analysisResult && (
+          <div style={{
+            ...sectionStyles,
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #bbf7d0'
+          }}>
+            <div style={sectionTitleStyles}>
+              <span>✅</span>
+              Análisis Completado
+            </div>
+            
+            <div style={{ fontSize: '12px', color: '#166534', lineHeight: 1.4 }}>
+              <div><strong>Camiones:</strong> {analysisResult.params.num_trucks}</div>
+              <div><strong>Capacidades:</strong> {analysisResult.params.truck_capacities.join(', ')}</div>
+              <div><strong>Demandas:</strong> {analysisResult.params.target_demands.join(', ')}</div>
+              
+              {analysisResult.analysis.observations && (
+                <div style={{ marginTop: '8px', fontStyle: 'italic' }}>
+                  <strong>Observaciones:</strong> {analysisResult.analysis.observations}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Configuración Manual (cuando se solicita o falla la IA) */}
+        {showManualConfig && (
+          <div style={sectionStyles}>
+            <div style={sectionTitleStyles}>
+              <span>⚙️</span>
+              Configuración Manual
+            </div>
+            
+            <label style={{ fontSize: '12px', color: '#6b7280' }}>
+              Número de camiones:
+            </label>
+            <input 
+              type="number" 
+              value={numTrucks}
+              onChange={(e) => {
+                const num = parseInt(e.target.value) || 1;
+                setNumTrucks(num);
+                setCapacities(Array(num).fill(100));
+              }}
+              min="1"
+              max="10"
+              style={inputStyles}
+            />
+            
+            {Array.from({length: numTrucks}, (_, i) => (
+              <div key={i} style={{ marginBottom: '8px' }}>
+                <label style={{ fontSize: '12px', color: '#6b7280' }}>
+                  Capacidad Camión {i + 1}:
+                </label>
+                <input 
+                  type="number" 
+                  value={capacities[i] || 100}
+                  onChange={(e) => {
+                    const newCapacities = [...capacities];
+                    newCapacities[i] = parseInt(e.target.value) || 100;
+                    setCapacities(newCapacities);
+                  }}
+                  style={inputStyles}
+                />
+              </div>
+            ))}
+            
+            {/* Demandas por objetivo */}
+            {selectedTargets.length > 0 && (
+              <>
+                <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginTop: '12px', marginBottom: '6px' }}>
+                  Demandas por objetivo:
+                </label>
+                {selectedTargets.map((target, index) => (
+                  <div key={target.id} style={{ marginBottom: '6px' }}>
+                    <label style={{ fontSize: '11px', color: '#6b7280' }}>
+                      Nodo {target.id}:
+                    </label>
+                    <input 
+                      type="number" 
+                      value={demands[target.id] || 1}
+                      onChange={(e) => {
+                        setDemands({
+                          ...demands,
+                          [target.id]: parseInt(e.target.value) || 1
+                        });
+                      }}
+                      min="1"
+                      style={{...inputStyles, marginBottom: '4px'}}
+                    />
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Botones de Acción */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button 
+            style={{
+              ...primaryButtonStyles,
+              flex: 1,
+              padding: '12px'
+            }}
+            onClick={handleSubmit}
+          >
+            🚀 Optimizar
+          </button>
+          <button 
+            style={{
+              ...secondaryButtonStyles,
+              flex: 1,
+              padding: '12px'
+            }}
+            onClick={() => onSubmit(null)}
+          >
+            🗑️ Limpiar
           </button>
         </div>
         
-        <p style={{ fontSize: "0.9rem", margin: "5px 0", color: "#666" }}>
-          {selectionMode === "depot" 
-            ? "Haga clic en el mapa para seleccionar el depósito" 
-            : "Haga clic en el mapa para añadir nodos objetivo"}
-        </p>
-      </div>
-      
-      {/* Nodos seleccionados */}
-      <div style={{ marginBottom: "15px" }}>
-        <h4 style={{ margin: "0 0 5px 0", fontSize: "1rem" }}>Nodos Seleccionados:</h4>
-        
-        {selectedDepot && (
-          <div style={{ 
-            padding: "5px", 
-            backgroundColor: "#e8f5e9", 
-            borderRadius: "4px", 
-            marginBottom: "5px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center" 
-          }}>
-            <span>Depósito: {selectedDepot.id}</span>
-            <button 
-              onClick={() => onClearSelection("depot")} 
-              style={{ border: "none", background: "none", cursor: "pointer", color: "#f44336" }}
-            >
-              ✕
-            </button>
-          </div>
-        )}
-        
-        {selectedTargets.length > 0 && (
-          <div style={{ 
-            maxHeight: "120px", 
-            overflowY: "auto", 
-            border: "1px solid #e0e0e0", 
-            borderRadius: "4px",
-            marginBottom: "5px"
-          }}>
-            {selectedTargets.map((target, index) => (
-              <div key={index} style={{ 
-                padding: "5px", 
-                borderBottom: index < selectedTargets.length - 1 ? "1px solid #e0e0e0" : "none",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}>
-                <span>Objetivo {index + 1}: {target.id}</span>
-                <button 
-                  onClick={() => onClearSelection("target", index)} 
-                  style={{ border: "none", background: "none", cursor: "pointer", color: "#f44336" }}
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Panel de Asistente IA */}
-      <div style={{ marginBottom: "15px" }}>
-        <button 
-          onClick={() => setShowAIPanel(!showAIPanel)}
-          style={{
-            width: "100%",
-            padding: "10px",
-            backgroundColor: "#9C27B0",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontWeight: "bold",
-            marginBottom: "10px"
-          }}
-        >
-          🤖 {showAIPanel ? "Ocultar" : "Mostrar"} Asistente IA
-        </button>
-
-        {showAIPanel && (
-          <div style={{ 
-            border: "2px solid #9C27B0", 
-            borderRadius: "8px", 
-            padding: "15px", 
-            backgroundColor: "#fafafa" 
-          }}>
-            <h4 style={{ margin: "0 0 10px 0", color: "#9C27B0" }}>Asistente IA para CVRP</h4>
-            
-            <div style={{ marginBottom: "15px" }}>
-              <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
-                Describe tu problema de ruteo:
-              </label>
-              <textarea
-                value={aiDescription}
-                onChange={(e) => setAiDescription(e.target.value)}
-                placeholder="Ej: Necesito repartir productos alimenticios a 5 tiendas. Cada tienda necesita entre 15-25 cajas. Tengo 2 camiones con capacidad de 100 cajas cada uno..."
-                style={{
-                  width: "100%",
-                  height: "80px",
-                  padding: "8px",
-                  borderRadius: "4px",
-                  border: "1px solid #ccc",
-                  resize: "vertical",
-                  fontSize: "0.9rem"
-                }}
-              />
-            </div>
-
-            <button
-              onClick={handleAIAnalysis}
-              disabled={isAnalyzing || !selectedDepot || selectedTargets.length === 0}
-              style={{
-                width: "100%",
-                padding: "10px",
-                backgroundColor: isAnalyzing ? "#ccc" : "#9C27B0",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: isAnalyzing ? "not-allowed" : "pointer",
-                marginBottom: "15px"
-              }}
-            >
-              {isAnalyzing ? "🔄 Analizando..." : "🚀 Analizar con IA"}
-            </button>
-
-            {/* Panel de estado de análisis */}
-            {isAnalyzing && (
-              <div style={{
-                backgroundColor: "#e3f2fd",
-                border: "1px solid #2196F3",
-                borderRadius: "4px",
-                padding: "10px",
-                marginBottom: "10px",
-                textAlign: "center"
-              }}>
-                <div>🤖 La IA está analizando tu descripción...</div>
-                <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "5px" }}>
-                  Esto puede tomar unos segundos
-                </div>
-              </div>
-            )}
-
-            {/* Panel de respuesta exitosa */}
-            {aiResponse && !aiError && (
-              <div style={{
-                backgroundColor: "#e8f5e9",
-                border: "1px solid #4CAF50",
-                borderRadius: "4px",
-                padding: "10px",
-                marginBottom: "10px"
-              }}>
-                <h5 style={{ margin: "0 0 10px 0", color: "#2E7D32" }}>✅ Análisis Completado</h5>
-                <div style={{
-                  maxHeight: "200px",
-                  overflowY: "auto",
-                  whiteSpace: "pre-line",
-                  fontSize: "0.9rem",
-                  lineHeight: "1.4"
-                }}>
-                  {aiResponse}
-                </div>
-              </div>
-            )}
-
-            {/* Panel de error */}
-            {aiError && (
-              <div style={{
-                backgroundColor: "#ffebee",
-                border: "1px solid #f44336",
-                borderRadius: "4px",
-                padding: "10px",
-                marginBottom: "10px"
-              }}>
-                <h5 style={{ margin: "0 0 10px 0", color: "#c62828" }}>❌ Error en el Análisis</h5>
-                <div style={{
-                  fontSize: "0.9rem",
-                  color: "#c62828"
-                }}>
-                  {aiError}
-                </div>
-                <div style={{
-                  fontSize: "0.8rem",
-                  color: "#666",
-                  marginTop: "5px"
-                }}>
-                  Intenta reformular tu descripción o verifica la conexión con el servidor.
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      
-      {/* Campo manual de número de camiones (solo visible si no hay parámetros de IA) */}
-      {!aiParams && (
-        <div style={{ marginBottom: "15px" }}>
-          <label>
-            Número de camiones:
-            <input 
-              type="number" 
-              value={localNumTrucks} 
-              onChange={e => setLocalNumTrucks(e.target.value)}
-              min="1"
-              style={{ width: "100%", padding: "8px", marginTop: "5px", borderRadius: "4px", border: "1px solid #ccc" }}
-            />
-          </label>
-        </div>
-      )}
-
-      {/* Mostrar resumen de parámetros de IA si están disponibles */}
-      {aiParams && (
-        <div style={{ 
-          marginBottom: "15px", 
-          padding: "10px", 
-          backgroundColor: "#e8f5e9", 
-          borderRadius: "4px",
-          border: "1px solid #4CAF50"
+        <div style={{
+          fontSize: '11px',
+          color: '#9ca3af',
+          textAlign: 'center',
+          marginTop: '12px',
+          lineHeight: 1.4
         }}>
-          <h4 style={{ margin: "0 0 5px 0", color: "#2E7D32", fontSize: "0.9rem" }}>✅ Parámetros configurados por IA:</h4>
-          <div style={{ fontSize: "0.8rem", color: "#2E7D32" }}>
-            <div>🚛 Camiones: {aiParams.num_trucks}</div>
-            <div>📦 Capacidades: [{aiParams.truck_capacities.join(", ")}]</div>
-            <div>📍 Demandas: [{aiParams.target_demands.join(", ")}]</div>
-          </div>
+          💡 Describe tu problema y la IA configurará automáticamente los parámetros
         </div>
-      )}
-      
-      <div style={{ display: "flex", gap: "10px" }}>
-        <button 
-          onClick={handleOptimize}
-          style={{
-            flex: 1,
-            padding: "10px",
-            backgroundColor: "#2196F3",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontWeight: "bold"
-          }}
-        >
-          Optimizar Rutas
-        </button>
-        
-        <button 
-          onClick={handleClear}
-          style={{
-            flex: 1,
-            padding: "10px",
-            backgroundColor: "#f44336",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer"
-          }}
-        >
-          Limpiar Todo
-        </button>
       </div>
     </div>
   );
-});
+};
 
 export default OptimizationForm;

@@ -6,11 +6,11 @@ import { PickingInfo } from "@deck.gl/core";
 import OptimizationForm from "./components/OptimizationForm";
 import RouteInfo from "./components/RouteInfo";
 import StatusPanel from "./components/StatusPanel";
-import StatsButton from "./components/StatsButton";
 import StatsModal from "./components/StatsModal";
 import WeatherInfoPanel from "./components/WeatherInfoPanel";
 import WeatherOverlay from "./components/WeatherOverlay";
 import RouteWeatherEffects from "./components/RouteWeatherEffects";
+import FloatingControls from "./components/FloatingControls";
 import { calculateRouteDistance } from "./utils/distance";
 import { getRouteColor } from "./utils/colors";
 
@@ -426,45 +426,49 @@ function App() {
         />
       }
       
-      {/* Panel mejorado para mostrar información de rutas */}
+      {/* Panel de rutas optimizadas */}
       {optimizedRoutes.length > 0 && (
-        <>
-          <RouteInfo 
-            routes={routesWithSelection} 
-            onSelectRoute={handleRouteSelect} 
-          />
-          
-          {/* Botón para mostrar/ocultar estadísticas detalladas */}
-          <StatsButton 
-            showDetailedStats={showDetailedStats}
-            setShowDetailedStats={setShowDetailedStats}
-          />
-            {/* Panel de estadísticas detalladas */}
-          <StatsModal 
-            showDetailedStats={showDetailedStats}
-            setShowDetailedStats={setShowDetailedStats}
-            optimizedRoutes={optimizedRoutes}
-          />
-            {/* Panel de información climática */}
-          <WeatherInfoPanel 
-            weatherInfo={weatherInfo}
-            isVisible={showWeatherPanel && weatherInfo !== null}
-          />
-        </>
+        <RouteInfo 
+          routes={routesWithSelection} 
+          onSelectRoute={handleRouteSelect} 
+        />
       )}
       
-      {/* Overlay climático compacto en el mapa */}
-      <WeatherOverlay 
+      {/* Panel de información climática */}
+      <WeatherInfoPanel 
         weatherInfo={weatherInfo}
-        position="top-right"
+        isVisible={showWeatherPanel && weatherInfo !== null}
       />
       
-      {/* Efectos visuales de clima en rutas */}
+      {/* Overlay climático compacto */}
+      <WeatherOverlay 
+        weatherInfo={weatherInfo}
+        position="topRight"
+      />
+      
+      {/* Efectos visuales de clima */}
       <RouteWeatherEffects 
         routes={optimizedRoutes}
         weatherInfo={weatherInfo}
       />
       
+      {/* Controles flotantes unificados */}
+      <FloatingControls 
+        showDetailedStats={showDetailedStats}
+        setShowDetailedStats={setShowDetailedStats}
+        showWeatherPanel={showWeatherPanel}
+        setShowWeatherPanel={setShowWeatherPanel}
+        weatherInfo={weatherInfo}
+      />
+      
+      {/* Modal de estadísticas */}
+      <StatsModal 
+        showDetailedStats={showDetailedStats}
+        setShowDetailedStats={setShowDetailedStats}
+        optimizedRoutes={optimizedRoutes}
+      />
+      
+      {/* Mapa principal */}
       <DeckGL
         initialViewState={INITIAL_VIEW_STATE}
         controller
@@ -472,40 +476,6 @@ function App() {
       >
         <Map reuseMaps mapLib={import("maplibre-gl")} mapStyle={MAP_STYLE} />
       </DeckGL>
-        {/* Botón para toggle del panel climático */}
-      {weatherInfo && (
-        <button 
-          className="weather-toggle-btn"
-          onClick={() => setShowWeatherPanel(!showWeatherPanel)}
-          style={{
-            position: 'fixed',
-            bottom: '90px',
-            left: '20px',
-            zIndex: 400,
-            background: 'rgba(79, 70, 229, 0.9)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '50%',
-            width: '50px',
-            height: '50px',
-            fontSize: '20px',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.transform = 'scale(1.1)';
-            e.target.style.background = 'rgba(79, 70, 229, 1)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.transform = 'scale(1)';
-            e.target.style.background = 'rgba(79, 70, 229, 0.9)';
-          }}
-          title={showWeatherPanel ? 'Ocultar panel climático' : 'Mostrar panel climático'}
-        >
-          {showWeatherPanel ? '🌤️' : '🌦️'}
-        </button>
-      )}
     </>
   );
 }

@@ -1,62 +1,133 @@
 import React from 'react';
+import { basePanel, getZonePosition, Z_LAYERS } from './LayoutManager';
 
-const RouteInfo = ({ routes, onSelectRoute }) => (  <div style={{
-    position: 'fixed',
-    bottom: '20px',
-    right: '20px',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    padding: '15px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-    maxWidth: '320px',
+const RouteInfo = ({ routes, onSelectRoute }) => {
+  const panelStyles = {
+    ...basePanel,
+    ...getZonePosition('bottomRight'),
+    zIndex: Z_LAYERS.panels,
+    minWidth: '280px',
+    maxWidth: '340px',
     maxHeight: '40vh',
-    overflowY: 'auto',
-    zIndex: 250,
-    backdropFilter: 'blur(5px)'
-  }}>
-    <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: 'bold' }}>
-      Rutas Optimizadas
-    </h3>
-    
-    <div>
-      {routes.map((route, index) => (
-        <div 
-          key={route.id}
-          style={{
-            padding: '8px',
-            margin: '5px 0',
-            borderRadius: '4px',
-            border: '1px solid #e0e0e0',
-            backgroundColor: route.selected ? '#f0f0f0' : 'white',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center'
-          }}
-          onClick={() => onSelectRoute(route.id)}
-        >
+    overflowY: 'auto'
+  };
+
+  const headerStyles = {
+    background: 'linear-gradient(135deg, #059669, #10b981)',
+    color: 'white',
+    padding: '12px 15px',
+    borderRadius: '12px 12px 0 0',
+    position: 'sticky',
+    top: 0,
+    zIndex: 1
+  };
+
+  const contentStyles = {
+    padding: '15px'
+  };
+
+  const routeItemStyles = {
+    padding: '12px',
+    margin: '8px 0',
+    borderRadius: '8px',
+    border: '1px solid #e5e7eb',
+    backgroundColor: 'white',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    transition: 'all 0.3s ease'
+  };
+
+  const colorIndicatorStyles = (color) => ({
+    width: '16px',
+    height: '16px',
+    borderRadius: '50%',
+    backgroundColor: `rgb(${color.join(',')})`,
+    border: '2px solid white',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+  });
+
+  const routeInfoStyles = {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px'
+  };
+
+  const routeTitleStyles = {
+    fontWeight: '600',
+    fontSize: '14px',
+    color: '#111827'
+  };
+
+  const routeDetailsStyles = {
+    fontSize: '12px',
+    color: '#6b7280'
+  };
+
+  return (
+    <div style={panelStyles}>
+      <div style={headerStyles}>
+        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>
+          🗺️ Rutas Optimizadas ({routes.length})
+        </h3>
+      </div>
+      
+      <div style={contentStyles}>
+        {routes.map((route, index) => (
           <div 
-            style={{ 
-              width: '12px', 
-              height: '12px', 
-              borderRadius: '50%', 
-              backgroundColor: `rgb(${route.color.join(',')})`,
-              marginRight: '8px'
-            }} 
-          />
-          <div>
-            <div style={{ fontWeight: route.selected ? 'bold' : 'normal' }}>
-              Ruta {index + 1}
-            </div>
-            {route.distance && (
-              <div style={{ fontSize: '12px', color: '#666' }}>
-                Distancia: {route.distance.toFixed(2)} km
+            key={route.id}
+            style={{
+              ...routeItemStyles,
+              backgroundColor: route.selected ? '#f0f9ff' : 'white',
+              borderColor: route.selected ? '#3b82f6' : '#e5e7eb',
+              transform: route.selected ? 'scale(1.02)' : 'scale(1)'
+            }}
+            onClick={() => onSelectRoute(route.id)}
+            onMouseOver={(e) => {
+              if (!route.selected) {
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+                e.currentTarget.style.transform = 'scale(1.01)';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!route.selected) {
+                e.currentTarget.style.backgroundColor = 'white';
+                e.currentTarget.style.transform = 'scale(1)';
+              }
+            }}
+          >
+            <div style={colorIndicatorStyles(route.color)} />
+            <div style={routeInfoStyles}>
+              <div style={routeTitleStyles}>
+                {route.vehicleId || `Ruta ${index + 1}`}
               </div>
+              {route.distance && (
+                <div style={routeDetailsStyles}>
+                  📏 {route.distance.toFixed(2)} km • 📍 {route.path.length} puntos
+                </div>
+              )}
+            </div>
+            {route.selected && (
+              <div style={{ color: '#3b82f6', fontSize: '16px' }}>✓</div>
             )}
           </div>
+        ))}
+        
+        <div style={{
+          fontSize: '11px',
+          color: '#9ca3af',
+          textAlign: 'center',
+          marginTop: '12px',
+          paddingTop: '12px',
+          borderTop: '1px solid #f3f4f6'
+        }}>
+          💡 Haz clic en una ruta para resaltarla
         </div>
-      ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default RouteInfo;

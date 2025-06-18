@@ -12,6 +12,7 @@ from src.optimized_route import optimize_delivery_routes
 from src.NLP.cvrp_assistant import analyze_cvrp_requirements
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
+from flask import Flask, request, jsonify
 
 # Importar análisis climático
 import sys
@@ -389,6 +390,36 @@ async def handle_optimization_request(websocket, data):
         }))
 
 
+app = Flask(__name__)
+
+@app.route('/api/analyze_cvrp', methods=['POST'])
+def analyze_cvrp():
+    """Endpoint para analizar requerimientos CVRP con IA"""
+    try:
+        data = request.get_json()
+        
+        depot_info = data.get('depot_info')
+        targets_info = data.get('targets_info') 
+        user_description = data.get('user_description')
+        
+        if not depot_info or not targets_info or not user_description:
+            return jsonify({
+                'success': False,
+                'message': 'Faltan parámetros requeridos'
+            }), 400
+        
+        # Llamar al asistente CVRP
+        result = analyze_cvrp_requirements(depot_info, targets_info, user_description)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"Error en análisis CVRP: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error interno: {str(e)}'
+        }), 500
+
 # Añadir esta clase para manejar requests HTTP
 class CVRPHandler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -453,7 +484,7 @@ async def main():
     def start_http_server():
         try:
             http_server = HTTPServer(('localhost', 8767), CVRPHandler)
-            print("✅ Servidor HTTP para IA iniciado correctamente en puerto 8766")
+            print("✅ Servidor HTTP para IA iniciado correctamente en puerto 8767")
             print("🤖 Endpoint disponible: http://localhost:8767/analyze_cvrp")
             http_server.serve_forever()
         except Exception as e:
