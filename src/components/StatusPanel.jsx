@@ -10,10 +10,13 @@ const StatusPanel = ({
   showWeatherModal,
   setShowWeatherModal,
   weatherInfo,
-  // Nuevas props para estadísticas
+  // Props para estadísticas
   showDetailedStats,
   setShowDetailedStats,
-  hasRoutes
+  hasRoutes,
+  // NUEVO: Props para RAG
+  showRAGPanel,
+  setShowRAGPanel
 }) => {
   const getStatusColor = (status) => {
     if (status.includes('Conectado')) return '#22c55e';
@@ -35,6 +38,10 @@ const StatusPanel = ({
 
   const getStatsButtonColor = () => {
     return hasRoutes ? '#3b82f6' : '#9ca3af';
+  };
+
+  const getRAGButtonColor = () => {
+    return '#7c3aed'; // Color púrpura para el asistente RAG
   };
 
   const panelStyles = {
@@ -106,6 +113,12 @@ const StatusPanel = ({
     cursor: hasRoutes ? 'pointer' : 'not-allowed'
   };
 
+  const ragButtonStyles = {
+    ...buttonStyles,
+    backgroundColor: getRAGButtonColor(),
+    color: 'white'
+  };
+
   return (
     <div style={panelStyles}>
       <div style={headerStyles}>
@@ -134,7 +147,6 @@ const StatusPanel = ({
           </div>
         )}
 
-        {/* NUEVO: Mostrar información de rutas cuando existan */}
         {hasRoutes && (
           <div style={statusItemStyles}>
             <span style={{ fontSize: '16px' }}>📊</span>
@@ -176,7 +188,6 @@ const StatusPanel = ({
           🌤️ Análisis Climático
         </button>
 
-        {/* NUEVO: Botón de estadísticas de rutas */}
         <button 
           style={statsButtonStyles}
           onClick={() => hasRoutes && setShowDetailedStats(!showDetailedStats)}
@@ -185,6 +196,15 @@ const StatusPanel = ({
           disabled={!hasRoutes}
         >
           📊 {showDetailedStats ? 'Ocultar Estadísticas' : 'Ver Estadísticas'}
+        </button>
+
+        <button 
+          style={ragButtonStyles}
+          onClick={() => setShowRAGPanel(!showRAGPanel)}
+          onMouseOver={(e) => e.target.style.backgroundColor = '#6d28d9'}
+          onMouseOut={(e) => e.target.style.backgroundColor = '#7c3aed'}
+        >
+          🧠 {showRAGPanel ? 'Ocultar Asistente' : 'Asistente IA'}
         </button>
       </div>
     </div>

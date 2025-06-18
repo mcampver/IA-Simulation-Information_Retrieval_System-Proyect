@@ -12,6 +12,7 @@ import EnhancedRouteLayer from "./components/EnhancedRouteLayer";
 import RouteTooltip from "./components/RouteTooltip";
 import { calculateRouteDistance } from "./utils/distance";
 import { getRouteColor } from "./utils/colors";
+import RAGAssistantPanel from "./components/RAGAssistantPanel";
 
 // Mapa MapLibre
 const MAP_STYLE = `https://api.maptiler.com/maps/streets/style.json?key=MZjUAQpw10B8E0nsKVQP`;
@@ -51,6 +52,7 @@ function App() {
   const [showWeatherModal, setShowWeatherModal] = useState(false);
   const [hoveredRoute, setHoveredRoute] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState(null);
+  const [showRAGPanel, setShowRAGPanel] = useState(false);
 
   const trailsRef = useRef({});
   const wsRef = useRef(null);
@@ -380,6 +382,9 @@ function App() {
         showDetailedStats={showDetailedStats}
         setShowDetailedStats={setShowDetailedStats}
         hasRoutes={optimizedRoutes.length}
+        // NUEVO: Props para RAG
+        showRAGPanel={showRAGPanel}
+        setShowRAGPanel={setShowRAGPanel}
       />
       
       {/* Formulario de optimización */}
@@ -447,6 +452,15 @@ function App() {
       >
         <Map reuseMaps mapLib={import("maplibre-gl")} mapStyle={MAP_STYLE} />
       </DeckGL>
+
+      {/* NUEVO: Panel del Asistente RAG */}
+      <RAGAssistantPanel
+        optimizedRoutes={optimizedRoutes}
+        weatherInfo={weatherInfo}
+        connectionStatus={connectionStatus}
+        showRAGPanel={showRAGPanel}
+        setShowRAGPanel={setShowRAGPanel}
+      />
     </>
   );
 }
