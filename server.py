@@ -9,6 +9,9 @@ import math
 from src.vehicle import initialize_vehicles, update_vehicle_positions
 from src.traffic_lights import initialize_traffic_lights, update_traffic_lights
 from src.optimized_route import optimize_delivery_routes
+from src.NLP.cvrp_assistant import analyze_cvrp_requirements
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
 
 # Importar análisis climático
 import sys
@@ -222,6 +225,29 @@ async def handler(websocket):
                 if message_type == 'optimization_request':
                     # Manejar solicitud de optimización
                     await handle_optimization_request(websocket, data)
+                
+                # Añadir este bloque para manejar solicitudes de nodos del mapa
+                elif message_type == 'request_map_nodes':
+                    # Preparar datos de nodos para enviar al cliente
+                    map_nodes = []
+                    for node_id in all_nodes:
+                        try:
+                            node_data = street_graph.nodes[node_id]
+                            map_nodes.append({
+                                "id": node_id,
+                                "lat": node_data.get('lat'),
+                                "lon": node_data.get('lon')
+                            })
+                        except (KeyError, TypeError) as e:
+                            print(f"Error al procesar el nodo {node_id}: {e}")
+                            continue
+                    
+                    # Enviar nodos al cliente
+                    await websocket.send(json.dumps({
+                        "type": "map_nodes",
+                        "nodes": map_nodes
+                    }))
+                
                 # Aquí puedes manejar otros tipos de mensajes si es necesario
                 
             except json.JSONDecodeError:
@@ -363,14 +389,84 @@ async def handle_optimization_request(websocket, data):
         }))
 
 
+# Añadir esta clase para manejar requests HTTP
+class CVRPHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        if self.path == '/analyze_cvrp':
+            try:
+                content_length = int(self.headers['Content-Length'])
+                post_data = self.rfile.read(content_length)
+                data = json.loads(post_data.decode('utf-8'))
+                
+                # Extraer datos
+                depot_info = data.get('depot_info')
+                targets_info = data.get('targets_info')
+                user_description = data.get('user_description')
+                
+                # Analizar con IA
+                result = analyze_cvrp_requirements(depot_info, targets_info, user_description)
+                
+                # Enviar respuesta
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Methods', 'POST')
+                self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+                self.end_headers()
+                
+                response_data = json.dumps(result)
+                self.wfile.write(response_data.encode('utf-8'))
+                
+            except Exception as e:
+                print(f"Error en análisis CVRP: {e}")
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                
+                error_response = json.dumps({
+                    "success": False,
+                    "error": str(e),
+                    "message": "Error interno del servidor"
+                })
+                self.wfile.write(error_response.encode('utf-8'))
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def do_OPTIONS(self):
+        # Manejar preflight requests para CORS
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+
+# Modificar la función main para incluir el servidor HTTP
 async def main():
     # Cargar calles, inicializar vehículos y semaforos
     load_streets()
-    #initialize_vehicles(street_graph, all_nodes, vehicle_speeds, vehicles, street_congestion)
-    #initialize_traffic_lights(street_graph, traffic_lights)
-
 
     print("Servidor WebSocket iniciando en puerto 8765...")
+    
+    # Iniciar servidor HTTP para la IA en un hilo separado
+    def start_http_server():
+        try:
+            http_server = HTTPServer(('localhost', 8767), CVRPHandler)
+            print("✅ Servidor HTTP para IA iniciado correctamente en puerto 8766")
+            print("🤖 Endpoint disponible: http://localhost:8767/analyze_cvrp")
+            http_server.serve_forever()
+        except Exception as e:
+            print(f"❌ Error iniciando servidor HTTP: {e}")
+    
+    http_thread = threading.Thread(target=start_http_server, daemon=True)
+    http_thread.start()
+    
+    # Dar tiempo para que el servidor HTTP se inicie
+    await asyncio.sleep(1)
+    
+    # Iniciar servidor WebSocket
+    print("✅ Servidor WebSocket iniciado correctamente en puerto 8765")
     async with websockets.serve(
         handler, 
         "localhost", 
@@ -380,9 +476,8 @@ async def main():
     ):
         # Mantener el servidor ejecutándose indefinidamente
         await asyncio.Future()
-
-
     
+
 # Ejecuta el punto de entrada principal
 if __name__ == "__main__":
     try:
