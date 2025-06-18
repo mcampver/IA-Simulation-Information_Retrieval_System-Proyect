@@ -2,3 +2,4 @@ sentence-transformers>=4.1.0
 faiss-cpu>=1.11.0
 pydantic>=2.11.7
 geopy>=2.4.1
+unidecode>=1.4.0

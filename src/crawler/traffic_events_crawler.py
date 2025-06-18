@@ -1,6 +1,8 @@
 from typing import Any, Dict, List, Optional
 import requests
 from bs4 import BeautifulSoup
+import re
+from unidecode import unidecode
 
 from crawler.base_crawler import BaseCrawler
 
@@ -105,19 +107,71 @@ class TrafficCrawler(BaseCrawler):
                 print(resultados[0].get("title"))
 
         return resultados
+    
+    CLOSURE_KW  = ["cierre", "cerrar", "cerrará", "cerrarán",
+               "cortará", "cortarán", "interrupción", "desvío",
+               "desviarán", "reparación", "obras", "mantenimiento"]
 
-    """
-    Filtra los articulos que no son de La Habana
-    """    
-    def filter_response(self, all_articles: List[Dict[str, Any]]):
+    HABANA_KW   = ["la habana", "habana",
+                "centro habana", "habana vieja", "plaza de la revolución",
+                "playa", "regla", "guanabacoa", "10 de octubre",
+                "cerro", "arroyo naranjo", "boyeros", "cotorro",
+                "san miguel del padrón", "habana del este"]
 
+    def _norm(text: str) -> str:
+        """Minúsculas sin tildes para comparación robusta."""
+        return unidecode(text.lower())
+    
+    # Palabras que suelen preceder al nombre de la vía
+    _VIA_PREFIXES = r"(?:calle|avenida|ave\.?|carretera|autopista|via)"
+    # Ejemplo de nombre de vía → “23”, “Primera”, “Infanta”, “Vía Blanca”, “26 de Julio”
+    _VIA_NAME     = r"[A-ZÁÉÍÓÚÑ0-9][A-Za-zÁÉÍÓÚÑ0-9\s°\-]{1,40}"
+
+    VIA_REGEX = re.compile(
+        rf"\b{_VIA_PREFIXES}\s+{_VIA_NAME}", flags=re.IGNORECASE)
+    
+    def _descarga_cuerpo(self, url: str) -> str | None:
+        """Devuelve texto plano del artículo (máx. ~8 KB) o None."""
+        resp = self.fetch(url=url)
+        if not resp:
+            return None
+        soup = BeautifulSoup(resp.text, "lxml")
+        # En Cubadebate el cuerpo suele estar dentro de <div class="entry-content">
+        cont = soup.find("div", class_="entry-content")
+        if not cont:
+            cont = soup  # fallback: usar todo
+        # get_text(" ") conserva espacios; recorta para no cargar memoria
+        return cont.get_text(" ", strip=True)[:8000]
+
+    def _extrae_vias(self, texto_html: str) -> List[str]:
+        """Busca coincidencias con VIA_REGEX, devuelve lista única normalizada."""
+        matches = self.VIA_REGEX.findall(texto_html)
+        # Normalizamos: quitamos dobles espacios y capitalizamos cada palabra
+        calles = {re.sub(r"\s+", " ", m.strip()).title() for m in matches}
+        return sorted(calles)
+    
+    def filter_response(self, all_articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Paso A: prefiltra por keywords; Paso B: confirma y extrae vías."""
+        prelim = []
         for art in all_articles:
-            title: str = art.get("title")
+            texto = self._norm(f"{art['title']} {art.get('snippet', '')}")
+            if any(h in texto for h in self.HABANA_KW) and any(c in texto for c in self.CLOSURE_KW):
+                prelim.append(art)
 
-            if title.__contains__("La Habana"):
+        finales = []
+        for art in prelim:
+            cuerpo = self._descarga_cuerpo(art["url"])
+            if not cuerpo:
                 continue
-            else:
-                all_articles.remove(art)
 
-        return
+            texto_cuerpo_norm = self._norm(cuerpo) 
+            # Confirmar que realmente se habla de cierre
+            if not any(c in texto_cuerpo_norm for c in self.CLOSURE_KW):
+                continue
 
+            calles = self._extrae_vias(cuerpo)
+            if calles:      # Solo nos interesa si encontramos al menos 1 vía
+                art["streets"] = calles
+                finales.append(art)
+
+        return finales
