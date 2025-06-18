@@ -6,7 +6,8 @@ const FloatingControls = ({
   setShowDetailedStats, 
   showWeatherPanel, 
   setShowWeatherPanel,
-  weatherInfo 
+  weatherInfo,
+  hasRoutes // Nueva prop para controlar visibilidad
 }) => {
   const controlsStyles = {
     position: 'fixed',
@@ -51,16 +52,20 @@ const FloatingControls = ({
 
   return (
     <div style={controlsStyles}>
-      <button 
-        style={statsButtonStyles}
-        onClick={() => setShowDetailedStats(!showDetailedStats)}
-        onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
-        onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-        title={showDetailedStats ? 'Ocultar estadísticas' : 'Ver estadísticas'}
-      >
-        📊
-      </button>
+      {/* Botón de estadísticas - solo mostrar si hay rutas optimizadas */}
+      {hasRoutes && (
+        <button 
+          style={statsButtonStyles}
+          onClick={() => setShowDetailedStats(!showDetailedStats)}
+          onMouseEnter={(e) => e.target.style.transform = 'scale(1.1)'}
+          onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+          title={showDetailedStats ? 'Ocultar estadísticas' : 'Ver estadísticas de rutas'}
+        >
+          📊
+        </button>
+      )}
       
+      {/* Botón de clima - solo mostrar si hay información climática */}
       {weatherInfo && (
         <button 
           style={weatherButtonStyles}

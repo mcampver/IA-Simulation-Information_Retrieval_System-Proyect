@@ -4,7 +4,8 @@ import { Map } from "react-map-gl/maplibre";
 import { ScatterplotLayer, IconLayer, PathLayer } from "@deck.gl/layers";
 import { PickingInfo } from "@deck.gl/core";
 import OptimizationForm from "./components/OptimizationForm";
-import RouteInfo from "./components/RouteInfo";
+// Eliminar esta importación ya que solo se usará en el modal
+// import RouteStats from "./components/RouteStats";
 import StatusPanel from "./components/StatusPanel";
 import StatsModal from "./components/StatsModal";
 import WeatherInfoPanel from "./components/WeatherInfoPanel";
@@ -426,13 +427,14 @@ function App() {
         />
       }
       
-      {/* Panel de rutas optimizadas */}
-      {optimizedRoutes.length > 0 && (
-        <RouteInfo 
-          routes={routesWithSelection} 
-          onSelectRoute={handleRouteSelect} 
+      {/* REMOVER: Panel de estadísticas de rutas - ahora solo en modal */}
+      {/* {optimizedRoutes.length > 0 && (
+        <RouteStats 
+          optimizedRoutes={optimizedRoutes}
+          onSelectRoute={handleRouteSelect}
+          selectedRouteId={selectedRouteId}
         />
-      )}
+      )} */}
       
       {/* Panel de información climática */}
       <WeatherInfoPanel 
@@ -459,13 +461,17 @@ function App() {
         showWeatherPanel={showWeatherPanel}
         setShowWeatherPanel={setShowWeatherPanel}
         weatherInfo={weatherInfo}
+        // Agregar prop para mostrar estadísticas solo cuando hay rutas
+        hasRoutes={optimizedRoutes.length > 0}
       />
       
-      {/* Modal de estadísticas */}
+      {/* Modal de estadísticas - solo aquí se mostrarán las estadísticas de rutas */}
       <StatsModal 
         showDetailedStats={showDetailedStats}
         setShowDetailedStats={setShowDetailedStats}
         optimizedRoutes={optimizedRoutes}
+        selectedRouteId={selectedRouteId}
+        onSelectRoute={handleRouteSelect}
       />
       
       {/* Mapa principal */}
