@@ -1,17 +1,15 @@
 import React, { useEffect, useState, useRef } from "react";
 import { DeckGL } from "deck.gl";
 import { Map } from "react-map-gl/maplibre";
-import { ScatterplotLayer, IconLayer, PathLayer } from "@deck.gl/layers";
-import { PickingInfo } from "@deck.gl/core";
+import { ScatterplotLayer, IconLayer } from "@deck.gl/layers";
 import OptimizationForm from "./components/OptimizationForm";
-// Eliminar esta importación ya que solo se usará en el modal
-// import RouteStats from "./components/RouteStats";
 import StatusPanel from "./components/StatusPanel";
 import StatsModal from "./components/StatsModal";
 import WeatherInfoPanel from "./components/WeatherInfoPanel";
 import WeatherOverlay from "./components/WeatherOverlay";
 import RouteWeatherEffects from "./components/RouteWeatherEffects";
-import FloatingControls from "./components/FloatingControls";
+import EnhancedRouteLayer from "./components/EnhancedRouteLayer";
+import RouteTooltip from "./components/RouteTooltip";
 import { calculateRouteDistance } from "./utils/distance";
 import { getRouteColor } from "./utils/colors";
 
@@ -50,7 +48,10 @@ function App() {
   const [selectedDepot, setSelectedDepot] = useState(null);
   const [selectedTargets, setSelectedTargets] = useState([]);
   const [mapNodes, setMapNodes] = useState([]);
-  
+  const [showWeatherModal, setShowWeatherModal] = useState(false);
+  const [hoveredRoute, setHoveredRoute] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState(null);
+
   const trailsRef = useRef({});
   const wsRef = useRef(null);
 
@@ -265,77 +266,41 @@ function App() {
     setSelectedRouteId(routeId === selectedRouteId ? null : routeId);
   };
 
+  // Función mejorada para manejar hover de rutas
+  const handleRouteHover = (info) => {
+    if (info.object) {
+      setHoveredRoute({
+        ...info.object,
+        selectedId: selectedRouteId
+      });
+      setTooltipPosition({
+        x: info.x,
+        y: info.y
+      });
+    } else {
+      setHoveredRoute(null);
+      setTooltipPosition(null);
+    }
+  };
+
+  // Función para manejar click en rutas
+  const handleRouteClick = (routeId) => {
+    setSelectedRouteId(routeId === selectedRouteId ? null : routeId);
+  };
+
   // Preparar rutas con propiedad de selección
   const routesWithSelection = optimizedRoutes.map(route => ({
     ...route,
     selected: route.id === selectedRouteId
   }));
   const layers = [
-    // Capa para rutas optimizadas con efectos climáticos
-    new PathLayer({
-      id: 'optimized-routes',
-      data: optimizedRoutes,
-      pickable: true,
-      widthScale: 1,
-      widthMinPixels: 2,
-      getPath: d => d.path,      getColor: d => {
-        // Si la ruta está seleccionada, usar blanco
-        if (d.id === selectedRouteId) {
-          return [255, 255, 255, 255];
-        }
-        
-        // Obtener el color base único para cada vehículo
-        const routeIndex = parseInt(d.id.split('-')[1]) || 0;
-        const baseColor = getRouteColor(routeIndex);
-        
-        // Aplicar modificaciones sutiles por clima MANTENIENDO la diferenciación por vehículo
-        if (weatherInfo && weatherInfo.impact_factor > 1.6) {
-          // Condiciones adversas: oscurecer levemente pero mantener diferencias
-          return [
-            Math.max(baseColor[0] * 0.8, 80),
-            Math.max(baseColor[1] * 0.8, 80),
-            Math.max(baseColor[2] * 0.8, 80),
-            255
-          ];
-        } else if (weatherInfo && weatherInfo.impact_factor > 1.3) {
-          // Condiciones moderadas: ajuste muy sutil 
-          return [
-            Math.min(255, baseColor[0] * 1.05),
-            Math.min(255, baseColor[1] * 1.02),
-            Math.min(255, baseColor[2] * 0.98),
-            255
-          ];
-        }
-        
-        // Clima normal: usar color original con alpha completo
-        return [...baseColor, 255];
-      },
-      getWidth: d => {
-        // Ancho de línea basado en clima
-        const baseWidth = d.id === selectedRouteId ? 8 : 5;
-        if (weatherInfo && weatherInfo.impact_factor > 1.6) {
-          return baseWidth + 2; // Líneas más gruesas para condiciones adversas
-        }
-        return baseWidth;
-      },
-      onHover: (info) => {
-        // Actualiza el tooltip si se necesita
-      },
-      // Información que se mostrará al pasar el cursor
-      getTooltip: (obj) => {
-        if (obj.object) {
-          return {
-            html: `
-              <div>
-                <b>${obj.object.vehicleId}</b><br/>
-                Distancia: ${obj.object.distance.toFixed(2)} km<br/>
-                Puntos: ${obj.object.path.length}
-              </div>
-            `
-          };
-        }
-        return null;
-      }
+    // Rutas mejoradas con dirección y numeración
+    ...EnhancedRouteLayer({
+      routes: optimizedRoutes,
+      selectedRouteId,
+      weatherInfo,
+      onRouteClick: handleRouteClick,
+      onRouteHover: handleRouteHover
     }),
     
     // Capa para nodos seleccionados
@@ -354,13 +319,10 @@ function App() {
       getRadius: d => d.type === 'depot' ? 15 : 10,
       getFillColor: d => d.type === 'depot' ? [0, 255, 0, 200] : [0, 128, 255, 200],
       getLineColor: [255, 255, 255],
-      getLineWidth: 2,
-      onHover: (info) => {
-        // Mostrar tooltip con información del nodo si se desea
-      }
+      getLineWidth: 2
     }),
 
-    // Capas existentes
+    // Capas existentes de vehículos y semáforos
     new IconLayer({
       id: "vehicle-icons",
       data: Object.values(vehicleData),
@@ -371,7 +333,7 @@ function App() {
         anchorY: 128,
       }),
       getPosition: (d) => d.position,
-      getSize: 2, // escala del ícono
+      getSize: 2,
       sizeScale: 10,
       getAngle: 0,
       getColor: 0,
@@ -387,7 +349,6 @@ function App() {
       radiusMinPixels: 2,
     }),
 
-    // Modificar tu capa de semáforos o añadir una capa específica para nodos clickeables
     new ScatterplotLayer({
       id: "map-nodes",
       data: mapNodes,
@@ -405,13 +366,20 @@ function App() {
   // Agregamos un panel para mostrar la información de las rutas
   return (
     <>
-      {/* Panel de estado extraído como componente */}
+      {/* Panel de estado con todas las funciones */}
       <StatusPanel 
         connectionStatus={connectionStatus}
         errorMessage={errorMessage}
         vehicleCount={Object.keys(vehicleData).length}
         showOptimizationForm={showOptimizationForm}
         setShowOptimizationForm={setShowOptimizationForm}
+        showWeatherModal={showWeatherModal}
+        setShowWeatherModal={setShowWeatherModal}
+        weatherInfo={weatherInfo}
+        // NUEVO: Props para estadísticas
+        showDetailedStats={showDetailedStats}
+        setShowDetailedStats={setShowDetailedStats}
+        hasRoutes={optimizedRoutes.length}
       />
       
       {/* Formulario de optimización */}
@@ -436,16 +404,17 @@ function App() {
         />
       )} */}
       
-      {/* Panel de información climática */}
-      <WeatherInfoPanel 
+      {/* Weather Modal */}
+      <WeatherInfoPanel
         weatherInfo={weatherInfo}
-        isVisible={showWeatherPanel && weatherInfo !== null}
+        showWeatherModal={showWeatherModal}
+        setShowWeatherModal={setShowWeatherModal}
       />
-      
+
       {/* Overlay climático compacto */}
       <WeatherOverlay 
         weatherInfo={weatherInfo}
-        position="topRight"
+        position="topRightOverlay"
       />
       
       {/* Efectos visuales de clima */}
@@ -454,18 +423,7 @@ function App() {
         weatherInfo={weatherInfo}
       />
       
-      {/* Controles flotantes unificados */}
-      <FloatingControls 
-        showDetailedStats={showDetailedStats}
-        setShowDetailedStats={setShowDetailedStats}
-        showWeatherPanel={showWeatherPanel}
-        setShowWeatherPanel={setShowWeatherPanel}
-        weatherInfo={weatherInfo}
-        // Agregar prop para mostrar estadísticas solo cuando hay rutas
-        hasRoutes={optimizedRoutes.length > 0}
-      />
-      
-      {/* Modal de estadísticas - solo aquí se mostrarán las estadísticas de rutas */}
+      {/* Modal de estadísticas */}
       <StatsModal 
         showDetailedStats={showDetailedStats}
         setShowDetailedStats={setShowDetailedStats}
@@ -474,11 +432,18 @@ function App() {
         onSelectRoute={handleRouteSelect}
       />
       
+      {/* Tooltip de ruta */}
+      <RouteTooltip 
+        hoveredRoute={hoveredRoute}
+        position={tooltipPosition}
+      />
+      
       {/* Mapa principal */}
       <DeckGL
         initialViewState={INITIAL_VIEW_STATE}
         controller
         layers={layers}
+        onHover={handleRouteHover}
       >
         <Map reuseMaps mapLib={import("maplibre-gl")} mapStyle={MAP_STYLE} />
       </DeckGL>
