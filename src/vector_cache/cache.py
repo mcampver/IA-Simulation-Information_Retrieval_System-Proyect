@@ -1,7 +1,7 @@
 from vector_cache.config import settings
 from vector_cache.pipeline import build_vector
 from vector_cache.store.faiss_store import FaissStore
-from Metaheuristic.solver import solve_route  # tu función existente
+from optimized_route import optimize_delivery_routes
 
 # Creamos el índice la primera vez (dim = embedding_dim + 2 coords)
 _dim = __import__("VectorCache.embeddings.model").embeddings.model._model.get_sentence_embedding_dimension() + 2
@@ -18,7 +18,7 @@ def get_or_compute_route(context: dict) -> tuple[list, str]:
         return meta["route"], "cache"
 
     # 3) Si no hay coincidencia suficiente, calculamos nueva ruta
-    route = solve_route(context)         # tu algoritmo actual
+    route = optimize_delivery_routes(context)         # tu algoritmo actual
     # 4) Almacenamos vector + ruta
     _store.add(vec, {"route": route})
     
