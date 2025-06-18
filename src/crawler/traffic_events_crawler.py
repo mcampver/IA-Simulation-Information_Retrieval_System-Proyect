@@ -43,9 +43,9 @@ class TrafficCrawler(BaseCrawler):
             print("HTML no recuperado")
             return []
 
-        return self.parse(response, False)
+        return self.parse(response, True)
 
-    def parse(self, response: requests.Response, filter : bool) -> List[Dict[str, Any]]:
+    def parse(self, response: requests.Response, filtrar : bool) -> List[Dict[str, Any]]:
         """
         1. Convierte la respuesta text en un objeto BeautifulSoup.
         2. Busca todos los articulos que representen noticias.
@@ -65,11 +65,11 @@ class TrafficCrawler(BaseCrawler):
             print(art.name)  # Testing
 
             # 2) Extraer el título y la URL del artículo
-            h3 = art.find('h3')  # Titulo del articulo
-            if not h3:
+            title_section = art.find('div', class_='title')  # Titulo del articulo
+            if not title_section:
                 continue  
 
-            enlace = h3.find('a')
+            enlace = title_section.find('a')
             if not enlace or not enlace.get('href'):
                 continue
 
@@ -102,7 +102,7 @@ class TrafficCrawler(BaseCrawler):
             })
             print(resultados[0].get("title"))
 
-            if filter :
+            if filtrar :
                 self.filter_response(resultados)
                 print(resultados[0].get("title"))
 
@@ -150,28 +150,42 @@ class TrafficCrawler(BaseCrawler):
         calles = {re.sub(r"\s+", " ", m.strip()).title() for m in matches}
         return sorted(calles)
     
-    def filter_response(self, all_articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Paso A: prefiltra por keywords; Paso B: confirma y extrae vías."""
+    def filter_response(self, articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        1. Prefiltra por (keyword de La Habana) ∧ (keyword de cierre) en título+snippet.
+        2. Para cada pre-candidato:
+        - Descarga el cuerpo y confirma que hay keyword de cierre.
+        - Extrae nombres de vías.
+        3. Devuelve lista filtrada (cada dict con clave 'streets').
+        """
+        # -------- Paso A : prefiltrado rápido por título/snippet ----------
         prelim = []
-        for art in all_articles:
+        for art in articles:
             texto = self._norm(f"{art['title']} {art.get('snippet', '')}")
-            if any(h in texto for h in self.HABANA_KW) and any(c in texto for c in self.CLOSURE_KW):
+            if (any(k in texto for k in self.HABANA_KW)
+                    and any(k in texto for k in self.CLOSURE_KW)):
                 prelim.append(art)
 
+        # -------- Paso B : verificación y extracción de vías -------------
         finales = []
         for art in prelim:
             cuerpo = self._descarga_cuerpo(art["url"])
             if not cuerpo:
                 continue
 
-            texto_cuerpo_norm = self._norm(cuerpo) 
-            # Confirmar que realmente se habla de cierre
-            if not any(c in texto_cuerpo_norm for c in self.CLOSURE_KW):
+            cuerpo_norm = self._norm(cuerpo)
+            if not any(k in cuerpo_norm for k in self.CLOSURE_KW):
+                # No se confirma el cierre en el texto completo
                 continue
 
             calles = self._extrae_vias(cuerpo)
-            if calles:      # Solo nos interesa si encontramos al menos 1 vía
-                art["streets"] = calles
-                finales.append(art)
+            if not calles:
+                # No se mencionan vías concretas; puedes decidir si descartas
+                continue
+
+            # Añadimos la lista de calles encontradas y guardamos
+            art = art.copy()         # evitamos mutar el original
+            art["streets"] = calles
+            finales.append(art)
 
         return finales
