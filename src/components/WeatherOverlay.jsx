@@ -1,4 +1,5 @@
 import React from 'react';
+import { Z_LAYERS } from './LayoutManager';
 
 const WeatherOverlay = ({ weatherInfo, position = 'top-right' }) => {
   if (!weatherInfo) return null;
@@ -25,44 +26,44 @@ const WeatherOverlay = ({ weatherInfo, position = 'top-right' }) => {
     return '🌤️';
   };
 
-  const positionStyle = {
-    'top-right': { top: '20px', right: '20px' },
-    'top-left': { top: '20px', left: '20px' },
-    'bottom-right': { bottom: '20px', right: '20px' },
-    'bottom-left': { bottom: '20px', left: '20px' },
-  };  const overlayStyles = {
+  // Posicionamiento específico arriba del formulario de optimización
+  const overlayStyles = {
     position: 'fixed',
-    zIndex: 200,  // Menor que RouteInfo
-    pointerEvents: 'none',
-    ...positionStyle[position]
+    top: '20px', // Misma coordenada Y que otros paneles
+    right: '20px', // Alineado a la derecha
+    zIndex: Z_LAYERS.overlays, // Mayor que panels pero menor que modals
+    pointerEvents: 'none'
   };
 
   const indicatorStyles = {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
+    gap: '10px', // Reducido para compactar
     background: 'rgba(255, 255, 255, 0.95)',
     backdropFilter: 'blur(10px)',
-    border: `3px solid ${getImpactColor(weatherInfo.impact_factor)}`,
-    borderRadius: '50px',
-    padding: '12px 16px',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
-    transition: 'all 0.3s ease'
+    border: `2px solid ${getImpactColor(weatherInfo.impact_factor)}`,
+    borderRadius: '25px', // Más compacto
+    padding: '8px 12px', // Reducido
+    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
+    transition: 'all 0.3s ease',
+    minWidth: 'auto', // Permitir ancho automático
+    width: 'fit-content'
   };
 
   const iconStyles = {
-    fontSize: '28px',
-    filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))'
+    fontSize: '20px', // Reducido
+    filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))'
   };
 
   const infoStyles = {
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'flex-start'
+    alignItems: 'flex-start',
+    gap: '1px' // Compactar información
   };
 
   const factorStyles = {
-    fontSize: '16px',
+    fontSize: '14px', // Reducido
     fontWeight: 'bold',
     lineHeight: 1,
     color: getImpactColor(weatherInfo.impact_factor),
@@ -70,7 +71,7 @@ const WeatherOverlay = ({ weatherInfo, position = 'top-right' }) => {
   };
 
   const statusStyles = {
-    fontSize: '10px',
+    fontSize: '9px', // Muy pequeño
     fontWeight: '600',
     opacity: 0.8,
     lineHeight: 1,
@@ -88,7 +89,6 @@ const WeatherOverlay = ({ weatherInfo, position = 'top-right' }) => {
   return (
     <>
       <div style={overlayStyles}>
-        {/* Indicador Principal Compacto */}
         <div style={indicatorStyles}>
           <div style={iconStyles}>
             {getWeatherIcon(weatherInfo.weather_summary)}
@@ -113,7 +113,7 @@ const WeatherOverlay = ({ weatherInfo, position = 'top-right' }) => {
           right: 0,
           bottom: 0,
           pointerEvents: 'none',
-          zIndex: 999
+          zIndex: 50 // Muy bajo para no interferir
         }}>
           <div style={{
             position: 'absolute',
@@ -122,7 +122,7 @@ const WeatherOverlay = ({ weatherInfo, position = 'top-right' }) => {
             right: 0,
             bottom: 0,
             background: `radial-gradient(circle, ${getImpactColor(weatherInfo.impact_factor)}15 0%, transparent 70%)`,
-            opacity: 0.3
+            opacity: 0.2 // Reducido para menor interferencia
           }} />
         </div>
       )}
