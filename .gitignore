@@ -3,11 +3,9 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
-# Modificados especificamente por el so
-src/metaheuristic/ag_solver/ag_solver.egg-info/PKG-INFO/
-src/metaheuristic/sa_solver/sa_solver.egg-info/PKG-INFO/
-src/metaheuristic/ts_solver/ts_solver.egg-info/PKG-INFO/
-src/metaheuristic/vns_solver/vns_solver.egg-info/PKG-INFO/
+# Ignorar todos los directorios .egg-info en el proyecto
+**/*.egg-info/
+
 src/metaheuristic/ag_solver/build/lib.linux-x86_64-3.10/
 src/metaheuristic/ag_solver/build/temp.linux-x86_64-3.10/
 src/metaheuristic/sa_solver/build/lib.linux-x86_64-3.10/
