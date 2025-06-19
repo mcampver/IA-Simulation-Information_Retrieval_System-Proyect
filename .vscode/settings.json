@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "numeric": "cpp",
-        "iomanip": "cpp"
+        "iomanip": "cpp",
+        "vector": "cpp"
     }
 }

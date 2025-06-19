@@ -31,7 +31,7 @@ class CVRPAssistant:
         self.conversation_state = "ready"
         self.history = []
     
-    def analyze_requirements(self, depot_info: dict, targets_info: list, user_description: str) -> dict:
+    def analyze_requirements(self, depot_info: dict, targets_info: list, user_description: str, solver: str = 'vns_solver') -> dict:
         """
         Analiza los requerimientos del usuario y extrae parámetros para CVRP
         
@@ -39,13 +39,14 @@ class CVRPAssistant:
             depot_info: Información del depósito seleccionado {id: int, position: [lon, lat]}
             targets_info: Lista de objetivos seleccionados [{id: int, position: [lon, lat]}, ...]
             user_description: Descripción en lenguaje natural del usuario
+            solver: Algoritmo de optimización seleccionado ('vns_solver', 'ts_solver', 'sa_solver', 'ag_solver')
         
         Returns:
             dict con los parámetros extraídos y mensajes de respuesta
         """
         
         # Construir contexto para el análisis
-        context = self._build_context(depot_info, targets_info)
+        context = self._build_context(depot_info, targets_info, solver)
         
         # Prompt para analizar los requerimientos
         prompt = f"""
@@ -58,18 +59,20 @@ class CVRPAssistant:
         PUNTOS OBJETIVO ({len(targets_info)} destinos):
         {self._format_targets_for_prompt(targets_info)}
 
+        ALGORITMO SELECCIONADO: {self._get_solver_description(solver)}
+
         DESCRIPCIÓN DEL USUARIO:
         "{user_description}"
 
-        Por favor, analiza la descripción del usuario y extrae la siguiente información:
+        Por favor, analiza la descripción del usuario y extrae la siguiente información considerando que se usará {solver.replace('_', ' ').title()}:
 
-        1. NÚMERO DE CAMIONES: ¿Cuántos vehículos necesita? Si no se especifica, sugiere un número razonable basado en los {len(targets_info)} destinos.
+        1. NÚMERO DE CAMIONES: ¿Cuántos vehículos necesita? Si no se especifica, sugiere un número razonable basado en los {len(targets_info)} destinos y el algoritmo {solver}.
 
         2. CAPACIDADES DE LOS CAMIONES: ¿Qué capacidad tiene cada camión? Si no se especifica, sugiere capacidades razonables.
 
         3. DEMANDAS DE LOS DESTINOS: ¿Cuál es la demanda de cada punto objetivo? Si no se especifica, sugiere demandas razonables basadas en el contexto.
 
-        4. OBSERVACIONES: Cualquier información adicional relevante que hayas inferido.
+        4. OBSERVACIONES: Cualquier información adicional relevante que hayas inferido, incluyendo consideraciones específicas para el algoritmo {solver}.
 
         Responde ÚNICAMENTE con un JSON en este formato exacto:
         {{
@@ -79,7 +82,8 @@ class CVRPAssistant:
             "reasoning": {{
                 "num_trucks_reason": "explicación de por qué elegiste este número de camiones",
                 "capacities_reason": "explicación de las capacidades elegidas",
-                "demands_reason": "explicación de las demandas asignadas"
+                "demands_reason": "explicación de las demandas asignadas",
+                "solver_considerations": "consideraciones específicas para {solver}"
             }},
             "observations": "observaciones adicionales o sugerencias"
         }}
@@ -112,7 +116,7 @@ class CVRPAssistant:
                         "success": True,
                         "params": self.params.copy(),
                         "analysis": analysis_result,
-                        "message": self._format_success_message(analysis_result, targets_info)
+                        "message": self._format_success_message(analysis_result, targets_info, solver)
                     }
                 else:
                     return {
@@ -140,9 +144,19 @@ class CVRPAssistant:
                 "message": f"Error inesperado: {str(e)}"
             }
     
-    def _build_context(self, depot_info: dict, targets_info: list) -> str:
+    def _build_context(self, depot_info: dict, targets_info: list, solver: str = 'vns_solver') -> str:
         """Construye contexto geográfico y logístico"""
-        return f"Ruteo en La Habana, Cuba con {len(targets_info)} destinos desde el depósito {depot_info['id']}"
+        return f"Ruteo en La Habana, Cuba con {len(targets_info)} destinos desde el depósito {depot_info['id']} usando {solver}"
+    
+    def _get_solver_description(self, solver: str) -> str:
+        """Obtiene la descripción del solver seleccionado"""
+        descriptions = {
+            'vns_solver': 'Variable Neighborhood Search - Búsqueda en vecindario variable, bueno para problemas medianos',
+            'ts_solver': 'Tabu Search - Búsqueda tabú, excelente para escape de óptimos locales',
+            'sa_solver': 'Simulated Annealing - Recocido simulado, robusto para problemas complejos',
+            'ag_solver': 'Algoritmo Genético - Evolución de poblaciones, buena exploración global'
+        }
+        return descriptions.get(solver, 'Algoritmo de optimización')
     
     def _format_targets_for_prompt(self, targets_info: list) -> str:
         """Formatea la información de los objetivos para el prompt"""
@@ -186,9 +200,12 @@ class CVRPAssistant:
         except Exception as e:
             return {"valid": False, "error": f"Error en validación: {str(e)}"}
     
-    def _format_success_message(self, analysis: dict, targets_info: list) -> str:
+    def _format_success_message(self, analysis: dict, targets_info: list, solver: str = 'vns_solver') -> str:
         """Formatea el mensaje de éxito con la información analizada"""
         message = "✅ **Análisis completado exitosamente**\n\n"
+        
+        # Información del algoritmo seleccionado
+        message += f"⚙️ **Algoritmo:** {solver.replace('_', ' ').title()}\n\n"
         
         # Información de camiones
         message += f"🚛 **Camiones:** {analysis['num_trucks']}\n"
@@ -209,6 +226,8 @@ class CVRPAssistant:
                 message += f"  • Capacidades: {reasoning['capacities_reason']}\n"
             if "demands_reason" in reasoning:
                 message += f"  • Demandas: {reasoning['demands_reason']}\n"
+            if "solver_considerations" in reasoning:
+                message += f"  • Algoritmo: {reasoning['solver_considerations']}\n"
         
         # Observaciones adicionales
         if "observations" in analysis and analysis["observations"]:
@@ -233,7 +252,7 @@ class CVRPAssistant:
         self.history = []
 
 # Función para usar desde el servidor
-def analyze_cvrp_requirements(depot_info: dict, targets_info: list, user_description: str) -> dict:
+def analyze_cvrp_requirements(depot_info: dict, targets_info: list, user_description: str, solver: str = 'vns_solver') -> dict:
     """
     Función helper para analizar requerimientos de CVRP
     
@@ -241,12 +260,13 @@ def analyze_cvrp_requirements(depot_info: dict, targets_info: list, user_descrip
         depot_info: Información del depósito {id, position}
         targets_info: Lista de objetivos [{id, position}, ...]
         user_description: Descripción del usuario
+        solver: Algoritmo de optimización seleccionado
     
     Returns:
         dict con resultado del análisis
     """
     assistant = CVRPAssistant()
-    return assistant.analyze_requirements(depot_info, targets_info, user_description)
+    return assistant.analyze_requirements(depot_info, targets_info, user_description, solver)
 
 if __name__ == "__main__":
     # Ejemplo de uso

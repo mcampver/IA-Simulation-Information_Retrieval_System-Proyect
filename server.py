@@ -155,6 +155,9 @@ def load_streets():
         
         print(f"Grafo cargado con {len(all_nodes)} nodos y {edge_count} aristas")
         
+        # NUEVO: Analizar conectividad
+        analyze_graph_connectivity()
+        
     except Exception as e:
         print(f"Error cargando datos de calles: {e}")
         print("Creando grafo de desarrollo...")
@@ -266,13 +269,14 @@ async def handler(websocket):
 
 # Maneja solicitudes de optimización de rutas
 async def handle_optimization_request(websocket, data):
-    """Maneja solicitudes de optimización de rutas"""
+    """Maneja solicitudes de optimización de rutas con validación"""
     try:
         start_point = data.get('start_point')
         target_points = data.get('target_points', [])
         num_trucks = data.get('num_trucks', 1)
         truck_capacities = data.get('truck_capacities')
         target_demands = data.get('target_demands')
+        solver = data.get('solver', 'vns_solver')  # Nuevo parámetro
         
         # Validar datos de entrada
         if not start_point or not target_points:
@@ -281,7 +285,8 @@ async def handle_optimization_request(websocket, data):
                 "message": "Se requiere un punto de inicio y al menos un objetivo"
             }))
             return
-              # Convertir IDs de nodos a enteros si es necesario
+
+        # Convertir IDs de nodos a enteros si es necesario
         try:
             start_point = int(start_point)
             target_points = [int(p) for p in target_points]
@@ -303,13 +308,75 @@ async def handle_optimization_request(websocket, data):
             except Exception as e:
                 print(f"Error obteniendo datos climáticos: {e}")
                 weather_info = {"error": str(e)}
-              # Realizar la optimización (con análisis climático integrado)
-        print(f"Iniciando optimización para {len(target_points)} puntos con {num_trucks} vehículos...")
+
+        # NUEVO: Validar conectividad antes de optimizar
+        await websocket.send(json.dumps({
+            "type": "optimization_progress", 
+            "message": "Validando conectividad del grafo...",
+            "progress": 10
+        }))
+        
+        # Validar que todos los nodos existen en el grafo
+        missing_nodes = []
+        if start_point not in street_graph.nodes:
+            missing_nodes.append(f"depósito {start_point}")
+        
+        valid_targets = []
+        for target in target_points:
+            if target in street_graph.nodes:
+                valid_targets.append(target)
+            else:
+                missing_nodes.append(f"objetivo {target}")
+        
+        if missing_nodes:
+            error_msg = f"Nodos no encontrados en el mapa: {', '.join(missing_nodes)}"
+            await websocket.send(json.dumps({
+                "type": "optimization_error",
+                "message": error_msg
+            }))
+            return
+        
+        # Validar conectividad
+        from server import validate_node_connectivity  # Importar la función
+        valid_start, valid_targets, invalid_targets = validate_node_connectivity(
+            street_graph, start_point, valid_targets
+        )
+        
+        if invalid_targets:
+            await websocket.send(json.dumps({
+                "type": "optimization_progress", 
+                "message": f"Se excluyeron {len(invalid_targets)} nodos no alcanzables",
+                "progress": 20
+            }))
+        
+        if not valid_targets:
+            await websocket.send(json.dumps({
+                "type": "optimization_error",
+                "message": "No hay objetivos alcanzables desde el depósito seleccionado"
+            }))
+            return
+        
+        # Usar nodos validados
+        start_point = valid_start
+        target_points = valid_targets
+        
+        # Ajustar demandas y capacidades si es necesario
+        if target_demands and len(target_demands) > len(target_points):
+            target_demands = target_demands[:len(target_points)]
+        
+        await websocket.send(json.dumps({
+            "type": "optimization_progress", 
+            "message": f"Optimizando rutas para {len(target_points)} objetivos válidos...",
+            "progress": 30
+        }))
+        
+        # Realizar la optimización con el solver seleccionado
+        print(f"Iniciando optimización con {solver} para {len(target_points)} puntos con {num_trucks} vehículos...")
         
         # Enviar mensaje de progreso al cliente
         await websocket.send(json.dumps({
             "type": "optimization_progress",
-            "message": f"Calculando rutas para {len(target_points)} destinos...",
+            "message": f"Calculando rutas con {solver.replace('_', ' ').title()}...",
             "progress": 10
         }))
         
@@ -320,7 +387,8 @@ async def handle_optimization_request(websocket, data):
             num_trucks=num_trucks,
             truck_capacities=truck_capacities,
             target_demands=target_demands,
-            use_weather_impact=True  # Habilitar análisis climático
+            use_weather_impact=True,
+            solver=solver  # Pasar el solver seleccionado
         )
         
         # Enviar progreso de formateo
@@ -433,9 +501,10 @@ class CVRPHandler(BaseHTTPRequestHandler):
                 depot_info = data.get('depot_info')
                 targets_info = data.get('targets_info')
                 user_description = data.get('user_description')
+                selected_solver = data.get('solver', 'vns_solver')  # Nuevo parámetro
                 
-                # Analizar con IA
-                result = analyze_cvrp_requirements(depot_info, targets_info, user_description)
+                # Analizar con IA (incluir solver en el contexto)
+                result = analyze_cvrp_requirements(depot_info, targets_info, user_description, selected_solver)
                 
                 # Enviar respuesta
                 self.send_response(200)
@@ -515,4 +584,140 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("Servidor detenido por el usuario")
+
+def validate_node_connectivity(street_graph, start_node, target_nodes):
+    """
+    Valida que todos los nodos objetivo sean alcanzables desde el nodo de inicio
+    """
+    import networkx as nx
+    
+    valid_targets = []
+    invalid_targets = []
+    
+    # Obtener el componente conectado más grande
+    largest_component = max(nx.weakly_connected_components(street_graph), key=len)
+    
+    # Verificar si el nodo de inicio está en el componente principal
+    if start_node not in largest_component:
+        print(f"⚠️ Nodo de inicio {start_node} no está en el componente principal")
+        # Buscar el nodo más cercano en el componente principal
+        start_node = find_closest_node_in_component(street_graph, start_node, largest_component)
+        print(f"🔄 Usando nodo de inicio alternativo: {start_node}")
+    
+    # Validar cada nodo objetivo
+    for target in target_nodes:
+        try:
+            if target in largest_component:
+                # Verificar si hay camino desde el inicio
+                if nx.has_path(street_graph, start_node, target):
+                    valid_targets.append(target)
+                else:
+                    print(f"⚠️ No hay camino desde {start_node} a {target}")
+                    # Buscar nodo alternativo cercano
+                    alternative = find_closest_reachable_node(street_graph, start_node, target, largest_component)
+                    if alternative:
+                        valid_targets.append(alternative)
+                        print(f"🔄 Usando nodo alternativo: {alternative}")
+                    else:
+                        invalid_targets.append(target)
+            else:
+                print(f"⚠️ Nodo {target} no está en el componente principal")
+                alternative = find_closest_node_in_component(street_graph, target, largest_component)
+                if alternative and nx.has_path(street_graph, start_node, alternative):
+                    valid_targets.append(alternative)
+                    print(f"🔄 Usando nodo alternativo: {alternative}")
+                else:
+                    invalid_targets.append(target)
+        except Exception as e:
+            print(f"❌ Error validando nodo {target}: {e}")
+            invalid_targets.append(target)
+    
+    return start_node, valid_targets, invalid_targets
+
+def find_closest_node_in_component(street_graph, target_node, component):
+    """
+    Encuentra el nodo más cercano en un componente conectado específico
+    """
+    if target_node not in street_graph.nodes:
+        return None
+    
+    target_lat = street_graph.nodes[target_node].get('lat', 0)
+    target_lon = street_graph.nodes[target_node].get('lon', 0)
+    
+    closest_node = None
+    min_distance = float('inf')
+    
+    for node in component:
+        if node in street_graph.nodes:
+            node_lat = street_graph.nodes[node].get('lat', 0)
+            node_lon = street_graph.nodes[node].get('lon', 0)
+            
+            # Calcular distancia euclidiana
+            distance = ((target_lat - node_lat) ** 2 + (target_lon - node_lon) ** 2) ** 0.5
+            
+            if distance < min_distance:
+                min_distance = distance
+                closest_node = node
+    
+    return closest_node
+
+def find_closest_reachable_node(street_graph, start_node, target_node, component):
+    """
+    Encuentra el nodo más cercano al objetivo que sea alcanzable desde el inicio
+    """
+    import networkx as nx
+    
+    if target_node not in street_graph.nodes:
+        return None
+    
+    target_lat = street_graph.nodes[target_node].get('lat', 0)
+    target_lon = street_graph.nodes[target_node].get('lon', 0)
+    
+    # Buscar en un radio creciente
+    radius_candidates = []
+    
+    for node in component:
+        if node == start_node:
+            continue
+            
+        try:
+            if nx.has_path(street_graph, start_node, node):
+                node_lat = street_graph.nodes[node].get('lat', 0)
+                node_lon = street_graph.nodes[node].get('lon', 0)
+                distance = ((target_lat - node_lat) ** 2 + (target_lon - node_lon) ** 2) ** 0.5
+                radius_candidates.append((distance, node))
+        except:
+            continue
+    
+    if radius_candidates:
+        radius_candidates.sort(key=lambda x: x[0])
+        return radius_candidates[0][1]
+    
+    return None
+
+def analyze_graph_connectivity():
+    """Analiza la conectividad del grafo cargado"""
+    import networkx as nx
+    
+    if not street_graph.nodes:
+        print("❌ Grafo vacío")
+        return
+    
+    # Analizar componentes conectados
+    components = list(nx.weakly_connected_components(street_graph))
+    print(f"📊 Análisis del grafo:")
+    print(f"  - Total de nodos: {len(street_graph.nodes)}")
+    print(f"  - Total de aristas: {len(street_graph.edges)}")
+    print(f"  - Componentes conectados: {len(components)}")
+    
+    if len(components) > 1:
+        # Mostrar información de componentes
+        component_sizes = sorted([len(c) for c in components], reverse=True)
+        print(f"  - Componente principal: {component_sizes[0]} nodos ({component_sizes[0]/len(street_graph.nodes)*100:.1f}%)")
+        print(f"  - Otros componentes: {component_sizes[1:]}")
+        
+        largest_component = max(components, key=len)
+        print(f"  - Recomendación: Usar solo nodos del componente principal para garantizar conectividad")
+    else:
+        print(f"  - ✅ Grafo completamente conectado")
 

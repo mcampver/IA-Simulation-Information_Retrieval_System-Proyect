@@ -30,9 +30,10 @@ except ImportError as e:
 
 
 def optimize_delivery_routes(street_graph, start_point, target_points, num_trucks=1, 
-                            truck_capacities=None, target_demands=None, use_weather_impact=True):
+                            truck_capacities=None, target_demands=None, use_weather_impact=True,
+                            solver='vns_solver'):
     """
-    Optimiza rutas de entrega utilizando el solver VRP avanzado con análisis climático
+    Optimiza rutas de entrega con validación de conectividad
     
     Args:
         street_graph: Grafo de NetworkX con la red de calles
@@ -42,11 +43,35 @@ def optimize_delivery_routes(street_graph, start_point, target_points, num_truck
         truck_capacities: Lista de capacidades de los vehículos
         target_demands: Lista de demandas para cada punto objetivo
         use_weather_impact: Si usar el análisis de impacto climático
+        solver: Solver a utilizar ('vns_solver', 'ts_solver', 'sa_solver', 'ag_solver')
     
     Returns:
         (rutas_optimizadas, costo_total)
     """
     try:
+        # NUEVO: Validar conectividad antes de optimizar
+        print("🔍 Validando conectividad del grafo...")
+        valid_start, valid_targets, invalid_targets = validate_node_connectivity(
+            street_graph, start_point, target_points
+        )
+        
+        if invalid_targets:
+            print(f"⚠️ Se excluyeron {len(invalid_targets)} nodos no alcanzables: {invalid_targets}")
+        
+        if not valid_targets:
+            print("❌ No hay nodos objetivo válidos alcanzables")
+            return [], 0
+        
+        # Usar nodos validados
+        start_point = valid_start
+        target_points = valid_targets
+        
+        # Ajustar demandas si es necesario
+        if target_demands and len(target_demands) > len(target_points):
+            target_demands = target_demands[:len(target_points)]
+        
+        print(f"✅ Usando {len(target_points)} nodos objetivo válidos")
+        
         # Obtener factores de impacto climático diferenciados
         weather_factors = {'base': 1.0}
         if use_weather_impact and WEATHER_ANALYSIS_AVAILABLE:
@@ -111,56 +136,85 @@ def optimize_delivery_routes(street_graph, start_point, target_points, num_truck
         # Preparar vector de demandas (incluyendo el depósito como 0)
         demands = [0] + target_demands
         
-        # ////////// GENETIC ALGORITHM SOLVER //////////
-        # routes = ag_solver.solve_vrp(
-        #     dist_matrix, 
-        #     demands, 
-        #     truck_capacities, 
-        #     pop_size=400,
-        #     sel_size=40,
-        #     max_gen=1000,
-        #     no_improve_limit=20,
-        #     mut_rate=0.3)
         
-        # ////////// SIMULATED ANNEALING SOLVER //////////
-
-        # routes = sa_solver.solve(
-        #     N=n,  # Número total de nodos (incluyendo el depósito)
-        #     T=num_trucks,  # Número de vehículos
-        #     capacity=truck_capacities,  # Capacidades de cada vehículo
-        #     demand=demands,  # Demandas de cada nodo
-        #     distMat=dist_matrix,  # Matriz de distancias
-        #     T0=100.0,  # Temperatura inicial
-        #     Tf=0.1,  # Temperatura final
-        #     alpha=0.98,  # Factor de enfriamiento
-        #     iterPerTemp=100,  # Iteraciones por nivel de temperatura
-        #     lambdaPen=1000.0,  # Penalización por usar más vehículos
-        #     maxSeconds=30.0,  # Tiempo máximo de ejecución en segundos
-        #     seed=42  # Semilla aleatoria para reproducibilidad
-        # )
+        optimization_start = time.time()
         
         # Preparar los objetivos (índices de 1 a n-1, excluyendo el depósito)
         objectives = list(range(1, n))
         
-        # ////////// TABU SEARCH SOLVER (OPTIMIZADO PARA VELOCIDAD) //////////
+        print(f"🚀 Ejecutando optimización con {solver.upper()}")
         
-        print("Iniciando optimización con Tabu Search...")
-        optimization_start = time.time()
-        
-        routes = ts_solver.solve_vrp(
-            dist_matrix,
-            objectives,
-            demands,
-            truck_capacities,
-            num_trucks,
-            max_iter=300,        # Reducido de 1000
-            base_tabu_tenure=50,  # Reducido de 100
-            no_improve_limit=100, # Reducido de 200
-            diversification_interval=150  # Reducido de 500
-        )
+        # Seleccionar y ejecutar el solver apropiado
+        if solver == 'ag_solver':
+            print("🧬 Ejecutando Algoritmo Genético...")
+            routes = ag_solver.solve_vrp(
+                dist_matrix, 
+                demands, 
+                truck_capacities, 
+                pop_size=400,
+                sel_size=40,
+                max_gen=1000,
+                no_improve_limit=20,
+                mut_rate=0.3
+            )
+            
+        elif solver == 'sa_solver':
+            print("🌡️ Ejecutando Simulated Annealing...")
+            routes = sa_solver.solve(
+                N=n,  # Número total de nodos (incluyendo el depósito)
+                T=num_trucks,  # Número de vehículos
+                capacity=truck_capacities,  # Capacidades de cada vehículo
+                demand=demands,  # Demandas de cada nodo
+                distMat=dist_matrix,  # Matriz de distancias
+                T0=100.0,  # Temperatura inicial
+                Tf=0.1,  # Temperatura final
+                alpha=0.98,  # Factor de enfriamiento
+                iterPerTemp=100,  # Iteraciones por nivel de temperatura
+                lambdaPen=1000.0,  # Penalización por usar más vehículos
+                maxSeconds=30.0,  # Tiempo máximo de ejecución en segundos
+                seed=42  # Semilla aleatoria para reproducibilidad
+            )
+            
+        elif solver == 'ts_solver':
+            print("🚫 Ejecutando Tabu Search...")
+            routes = ts_solver.solve_vrp(
+                dist_matrix,
+                objectives,
+                demands,
+                truck_capacities,
+                num_trucks,
+                max_iter=300,        # Reducido de 1000
+                base_tabu_tenure=50,  # Reducido de 100
+                no_improve_limit=100, # Reducido de 200
+                diversification_interval=150  # Reducido de 500
+            )
+            
+        elif solver == 'vns_solver':
+            print("🔍 Ejecutando Variable Neighborhood Search...")
+            routes = vns_solver.solve_vrp(
+                dist_matrix,
+                objectives, 
+                demands,
+                truck_capacities,
+                num_trucks,
+                max_iter=300,
+                time_limit=30.0
+            )
+            
+        else:
+            print(f"❌ Solver desconocido: {solver}. Usando VNS por defecto.")
+            routes = vns_solver.solve_vrp(
+                dist_matrix,
+                objectives, 
+                demands,
+                truck_capacities,
+                num_trucks,
+                max_iter=300,
+                time_limit=30.0
+            )
         
         optimization_time = time.time() - optimization_start
-        print(f"Optimización completada en {optimization_time:.2f} segundos")
+        print(f"✅ Optimización con {solver.upper()} completada en {optimization_time:.2f} segundos")
         
         # Calcular el costo total de las rutas
         total_cost = 0
@@ -227,7 +281,7 @@ def optimize_delivery_routes(street_graph, start_point, target_points, num_truck
         return final_routes, total_cost
         
     except Exception as e:
-        print(f"Error en la optimización de rutas: {e}")
+        print(f"Error en la optimización de rutas con {solver}: {e}")
         import traceback
         traceback.print_exc()
         return [], 0
@@ -624,4 +678,99 @@ def _calculate_euclidean_matrix_with_climate(all_points, weather_factors, street
                 dist_matrix[i][j] = distance * 1.4 * avg_weather_factor
     
     print("✅ Matriz euclidiana lista")
+    return dist_matrix
+
+def validate_node_connectivity(street_graph, start_point, target_points):
+    """
+    Valida la conectividad de los nodos objetivo en el grafo
+    
+    Args:
+        street_graph: Grafo de NetworkX con la red de calles
+        start_point: Nodo de inicio (depósito)
+        target_points: Lista de nodos objetivo
+    
+    Returns:
+        (nodo_inicio_valido, nodos_objetivo_validos, nodos_objetivo_no_alcanzables)
+    """
+    import networkx as nx
+    
+    try:
+        # Verificar si el nodo de inicio es alcanzable
+        if not nx.has_path(street_graph, start_point, target_points[0]):
+            print(f"Advertencia: El nodo de inicio {start_point} no es alcanzable")
+            return None, [], target_points
+        
+        valid_targets = []
+        invalid_targets = []
+        
+        # Verificar la alcanzabilidad de cada nodo objetivo
+        for target in target_points:
+            if nx.has_path(street_graph, start_point, target):
+                valid_targets.append(target)
+            else:
+                invalid_targets.append(target)
+        
+        return start_point, valid_targets, invalid_targets
+    
+    except Exception as e:
+        print(f"Error validando conectividad: {e}")
+        return None, [], target_points
+
+def _calculate_distance_matrix_with_validation(street_graph, all_points, weather_factors, n, start_time):
+    """
+    Calcula matriz de distancias con manejo de nodos desconectados
+    """
+    import time
+    import networkx as nx
+    
+    dist_matrix = [[float('inf') for _ in range(n)] for _ in range(n)]
+    
+    print("🔍 Calculando matriz con validación de conectividad...")
+    
+    for i in range(n):
+        dist_matrix[i][i] = 0
+        source = all_points[i]
+        
+        try:
+            # Calcular distancias solo a nodos alcanzables
+            reachable_nodes = nx.single_source_dijkstra_path_length(
+                street_graph, source, weight='weight'
+            )
+            
+            for j in range(n):
+                if i != j:
+                    target = all_points[j]
+                    
+                    if target in reachable_nodes:
+                        base_distance = reachable_nodes[target]
+                        # Aplicar factores climáticos
+                        avg_weather_factor = sum(weather_factors.values()) / len(weather_factors)
+                        dist_matrix[i][j] = base_distance * avg_weather_factor
+                    else:
+                        # Nodo no alcanzable - mantener infinito
+                        print(f"⚠️ No hay camino desde {source} a {target}")
+                        dist_matrix[i][j] = float('inf')
+            
+            # Progreso
+            if (i + 1) % max(1, n // 5) == 0:
+                elapsed = time.time() - start_time
+                progress = (i + 1) / n * 100
+                print(f"⚡ Progreso: {progress:.0f}% ({elapsed:.1f}s)")
+                
+        except Exception as e:
+            print(f"❌ Error calculando desde nodo {source}: {e}")
+            # En caso de error, marcar todas las distancias como infinito
+            for j in range(n):
+                if i != j:
+                    dist_matrix[i][j] = float('inf')
+    
+    # Verificar si la matriz es válida
+    valid_paths = sum(1 for i in range(n) for j in range(n) 
+                     if i != j and dist_matrix[i][j] != float('inf'))
+    
+    print(f"✅ Matriz calculada: {valid_paths}/{n*(n-1)} caminos válidos")
+    
+    if valid_paths < n - 1:  # Al menos debe haber n-1 caminos para un árbol
+        print("⚠️ Advertencia: Matriz de distancias tiene muchos caminos inválidos")
+    
     return dist_matrix

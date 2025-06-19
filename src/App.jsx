@@ -53,6 +53,7 @@ function App() {
   const [hoveredRoute, setHoveredRoute] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState(null);
   const [showRAGPanel, setShowRAGPanel] = useState(false);
+  const [optimizationWarnings, setOptimizationWarnings] = useState([]);
 
   const trailsRef = useRef({});
   const wsRef = useRef(null);
@@ -161,6 +162,11 @@ function App() {
             if (data.type === 'optimization_progress') {
               console.log("Progreso de optimización:", data.message);
               setConnectionStatus(`Optimizando: ${data.message}`);
+              
+              // NUEVO: Detectar advertencias sobre nodos excluidos
+              if (data.message.includes('excluyeron') || data.message.includes('no alcanzables')) {
+                setOptimizationWarnings(prev => [...prev, data.message]);
+              }
             }
               
             // Si es una respuesta de optimización
@@ -246,16 +252,20 @@ function App() {
     // Si params es null, solo limpiamos las rutas sin enviar petición
     if (params === null) {
       setOptimizedRoutes([]);
+      setOptimizationWarnings([]); // Limpiar advertencias
       return;
     }
+    
+    setOptimizationWarnings([]); // Limpiar advertencias anteriores
     
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       // Limpiar rutas antiguas antes de solicitar nuevas
       setOptimizedRoutes([]);
       
+      // Incluir el solver en la petición
       wsRef.current.send(JSON.stringify({
         type: 'optimization_request',
-        ...params
+        ...params  // Esto incluirá el solver seleccionado
       }));
     } else {
       setErrorMessage("No hay conexión con el servidor");
@@ -385,6 +395,7 @@ function App() {
         // NUEVO: Props para RAG
         showRAGPanel={showRAGPanel}
         setShowRAGPanel={setShowRAGPanel}
+        optimizationWarnings={optimizationWarnings} // NUEVO
       />
       
       {/* Formulario de optimización */}

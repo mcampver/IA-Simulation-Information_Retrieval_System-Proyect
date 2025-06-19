@@ -1,16 +1,17 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/numpy.h>
 #include <vector>
 #include <algorithm>
 #include <random>
 #include <limits>
 #include <numeric>
 #include <chrono>
-#include <unordered_map>  // Para caching de distancias frecuentes
-#include <stdexcept>      // Para manejo de excepciones
-#include <string>         // Para mensajes de error
-#include <memory>         // Para punteros inteligentes
-#include <cassert>        // Para aserciones
+#include <unordered_map>
+#include <stdexcept>
+#include <string>
+#include <memory>
+#include <cassert>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -22,15 +23,15 @@ using Clock = chrono::steady_clock;
 
 // --- Configuración global del algoritmo (ahora parametrizable) ---
 struct VNSConfig {
-    int openmp_threshold = 5;   // Umbral para paralelización
-    int top_k_insert = 20;      // Candidatos a considerar para inserción
-    double intensification_factor = 1.2;  // Factor de intensificación para operadores exitosos
-    double diversification_factor = 0.9;  // Factor de diversificación
-    double initial_shake_intensity = 2.0; // Intensidad inicial de perturbación
-    double max_shake_intensity = 10.0;    // Intensidad máxima de perturbación
-    double shake_increase = 1.05;         // Aumento de intensidad por estancamiento
-    int max_stagnation = 10;     // Máximas iteraciones sin mejora (0 = max_iter/5)
-    bool use_caching = true;    // Usar caché para distancias frecuentes
+    int openmp_threshold = 5;
+    int top_k_insert = 20;
+    double intensification_factor = 1.2;
+    double diversification_factor = 0.9;
+    double initial_shake_intensity = 2.0;
+    double max_shake_intensity = 10.0;
+    double shake_increase = 1.05;
+    int max_stagnation = 10;
+    bool use_caching = true;
     
     // Validación de configuración
     void validate() const {
@@ -45,62 +46,15 @@ struct VNSConfig {
     }
 };
 
-// --- Estructuras de datos principales (mejoradas) ---
-struct Route {
-    vector<int> nodes;
-    double cost;
-    int load;
-    vector<double> prefix_cost;
-    int vehicle_id;
-    
-    // Constructor con valores por defecto
-    Route(vector<int> _nodes = {}, double _cost = 0.0, int _load = 0, 
-          vector<double> _prefix = {}, int _vid = -1) 
-        : nodes(std::move(_nodes)), cost(_cost), load(_load), 
-          prefix_cost(std::move(_prefix)), vehicle_id(_vid) {}
-    
-    // Método para validar ruta
-    bool is_valid(const vector<int>& demands, const vector<int>& capacities) const {
-        if (vehicle_id < 0 || vehicle_id >= capacities.size()) 
-            return false;
-        return load <= capacities[vehicle_id];
-    }
-    
-    // Método para realizar deep copy
-    Route clone() const {
-        return {nodes, cost, load, prefix_cost, vehicle_id};
-    }
-};
-
+// --- Estructura de datos compatible con ts_solver ---
 struct Solution {
-    vector<Route> routes;
-    double total_cost;
-    
-    // Constructor
-    Solution(vector<Route> _routes = {}, double _cost = 0.0)
-        : routes(std::move(_routes)), total_cost(_cost) {}
-    
-    // Validación de solución
-    bool is_valid(const vector<int>& demands, const vector<int>& capacities) const {
-        for (const auto& route : routes) {
-            if (!route.is_valid(demands, capacities))
-                return false;
-        }
-        return true;
-    }
-    
-    // Método para realizar deep copy
-    Solution clone() const {
-        vector<Route> new_routes;
-        new_routes.reserve(routes.size());
-        for (const auto& r : routes) {
-            new_routes.push_back(r.clone());
-        }
-        return {std::move(new_routes), total_cost};
-    }
+    vector<vector<int>> routes;   // rutas por camión (lista de nodos, sin depósito 0)
+    vector<int> loads;            // carga total en cada camión
+    vector<double> route_dists;   // distancia de cada ruta (incluye ida y vuelta a 0)
+    double total_distance;        // suma de route_dists
 };
 
-// Cache de distancias para mejorar rendimiento en matrices grandes
+// Cache de distancias para mejorar rendimiento
 class DistanceCache {
 private:
     const vector<vector<double>>& D;
@@ -134,605 +88,410 @@ public:
     }
 };
 
-// --- Funciones Auxiliares mejoradas ---
-
-// Actualiza el coste total y los costes acumulados de una ruta
-void update_route(Route &r, DistanceCache& D) {
-    int n = r.nodes.size();
-    r.prefix_cost.resize(n+1);
-    double acc = 0.0; 
-    int prev = 0;  // Comenzamos en el depósito (nodo 0)
-    r.prefix_cost[0] = 0.0;
-    
-    for (int i = 0; i < n; ++i) {
-        // Acumulamos la distancia del nodo anterior al actual
-        acc += D.get(prev, r.nodes[i]);
-        prev = r.nodes[i];
-        r.prefix_cost[i+1] = acc;  // Guardamos coste acumulado hasta este punto
+// Calcula la distancia de una ruta (incluye ida/vuelta al depósito 0)
+double compute_route_distance(const vector<int>& route, const vector<vector<double>>& dist) {
+    if (route.empty()) return 0.0;
+    double d = dist[0][route.front()];
+    for (size_t i = 0; i + 1 < route.size(); ++i) {
+        d += dist[route[i]][route[i+1]];
     }
-    // Añadimos el retorno al depósito
-    acc += D.get(prev, 0);
-    r.cost = acc;  // Coste total de la ruta
+    d += dist[route.back()][0];
+    return d;
 }
 
-// Validación de datos de entrada
-void validate_input(
-    const vector<vector<double>>& D,
-    const vector<int>& dem,
-    const vector<int>& caps)
+inline void update_total_distance(Solution &sol) {
+    double sum = 0.0;
+    for (double x : sol.route_dists) sum += x;
+    sol.total_distance = sum;
+}
+
+// Genera solución inicial usando algoritmo de ahorros
+Solution generate_initial_solution_vns(
+    const vector<int>& objectives,
+    const vector<int>& demands,
+    const vector<int>& capacities,
+    int num_trucks,
+    const vector<vector<double>>& dist)
 {
-    // Validar dimensiones
-    if (D.empty() || D[0].empty())
-        throw invalid_argument("La matriz de distancias no puede estar vacía");
+    Solution sol;
+    sol.routes.assign(num_trucks, {});
+    sol.loads.assign(num_trucks, 0);
+    sol.route_dists.assign(num_trucks, 0.0);
+
+    // Inicialización greedy mejorada
+    vector<bool> assigned(objectives.size(), false);
     
-    if (D.size() != D[0].size())
-        throw invalid_argument("La matriz de distancias debe ser cuadrada");
-    
-    if (dem.empty() || dem[0] != 0)
-        throw invalid_argument("El vector de demandas debe comenzar con 0 (depósito)");
-    
-    if (dem.size() != D.size())
-        throw invalid_argument("El tamaño del vector de demandas no coincide con la matriz de distancias");
-    
-    if (caps.empty())
-        throw invalid_argument("El vector de capacidades no puede estar vacío");
-    
-    // Validar valores
-    for (const auto& row : D) {
-        if (row.size() != D.size())
-            throw invalid_argument("Matriz de distancias mal formada (filas de longitud desigual)");
+    for (int obj : objectives) {
+        bool placed = false;
+        int best_truck = -1;
+        double best_cost_increase = numeric_limits<double>::infinity();
         
-        for (double val : row) {
-            if (val < 0)
-                throw invalid_argument("Las distancias no pueden ser negativas");
+        // Encontrar el mejor camión para este objetivo
+        for (int t = 0; t < num_trucks; ++t) {
+            if (sol.loads[t] + demands[obj] <= capacities[t]) {
+                // Calcular incremento de costo
+                double cost_increase;
+                if (sol.routes[t].empty()) {
+                    cost_increase = dist[0][obj] * 2; // Ida y vuelta al depósito
+                } else {
+                    int last_node = sol.routes[t].back();
+                    cost_increase = dist[last_node][obj] + dist[obj][0] - dist[last_node][0];
+                }
+                
+                if (cost_increase < best_cost_increase) {
+                    best_cost_increase = cost_increase;
+                    best_truck = t;
+                    placed = true;
+                }
+            }
+        }
+        
+        if (placed && best_truck >= 0) {
+            sol.routes[best_truck].push_back(obj);
+            sol.loads[best_truck] += demands[obj];
+        } else {
+            // Si no cabe en ningún camión, usar round-robin
+            int t = obj % num_trucks;
+            sol.routes[t].push_back(obj);
+            sol.loads[t] += demands[obj];
         }
     }
-    
-    for (int i = 1; i < dem.size(); ++i) {
-        if (dem[i] <= 0)
-            throw invalid_argument("Las demandas de los clientes deben ser positivas");
+
+    // Calcular distancias de rutas
+    for (int t = 0; t < num_trucks; ++t) {
+        sol.route_dists[t] = compute_route_distance(sol.routes[t], dist);
     }
-    
-    for (int cap : caps) {
-        if (cap <= 0)
-            throw invalid_argument("Las capacidades de los vehículos deben ser positivas");
-    }
+    update_total_distance(sol);
+    return sol;
 }
 
-// --- Operadores de búsqueda local (mejorados y con mejores nombres) ---
+// Operadores de búsqueda local
 enum OpType { SWAP=0, RELOCATE=1, TWO_OPT=2, OP_COUNT=3 };
 
-// Operador SWAP: intercambia un cliente aleatorio entre dos rutas
-bool apply_swap(Route &source, Route &target, 
-               const vector<int>& demands, const vector<int>& capacities) {
-    if (source.nodes.empty() || target.nodes.empty()) return false;
+bool apply_swap_vns(Solution& sol, const vector<int>& demands, const vector<int>& capacities, 
+                    const vector<vector<double>>& dist, mt19937& gen) {
+    if (sol.routes.size() < 2) return false;
     
-    static thread_local mt19937 gen(random_device{}());
-    uniform_int_distribution<> dist_source(0, source.nodes.size()-1);
-    uniform_int_distribution<> dist_target(0, target.nodes.size()-1);
+    uniform_int_distribution<> truck_dist(0, sol.routes.size() - 1);
+    int t1 = truck_dist(gen);
+    int t2 = truck_dist(gen);
+    if (t1 == t2) t2 = (t1 + 1) % sol.routes.size();
     
-    int pos_source = dist_source(gen);
-    int pos_target = dist_target(gen);
+    if (sol.routes[t1].empty() || sol.routes[t2].empty()) return false;
     
-    int node_source = source.nodes[pos_source];
-    int node_target = target.nodes[pos_target];
+    uniform_int_distribution<> pos1_dist(0, sol.routes[t1].size() - 1);
+    uniform_int_distribution<> pos2_dist(0, sol.routes[t2].size() - 1);
+    int pos1 = pos1_dist(gen);
+    int pos2 = pos2_dist(gen);
     
-    // Verificar factibilidad antes de realizar el intercambio
-    int new_load_source = source.load - demands[node_source] + demands[node_target];
-    int new_load_target = target.load - demands[node_target] + demands[node_source];
+    int node1 = sol.routes[t1][pos1];
+    int node2 = sol.routes[t2][pos2];
     
-    if (new_load_source > capacities[source.vehicle_id] ||
-        new_load_target > capacities[target.vehicle_id]) {
-        return false; // El intercambio no es factible
+    // Verificar factibilidad
+    int new_load1 = sol.loads[t1] - demands[node1] + demands[node2];
+    int new_load2 = sol.loads[t2] - demands[node2] + demands[node1];
+    
+    if (new_load1 > capacities[t1] || new_load2 > capacities[t2]) {
+        return false;
     }
     
-    // Realizar el intercambio
-    swap(source.nodes[pos_source], target.nodes[pos_target]);
-    source.load = new_load_source;
-    target.load = new_load_target;
+    // Aplicar swap
+    swap(sol.routes[t1][pos1], sol.routes[t2][pos2]);
+    sol.loads[t1] = new_load1;
+    sol.loads[t2] = new_load2;
+    
+    // Recalcular distancias
+    sol.route_dists[t1] = compute_route_distance(sol.routes[t1], dist);
+    sol.route_dists[t2] = compute_route_distance(sol.routes[t2], dist);
+    update_total_distance(sol);
     
     return true;
 }
 
-// Operador RELOCATE: mueve un cliente de una ruta a otra
-bool apply_relocate(Route &source, Route &target, 
-                   const vector<int>& demands, const vector<int>& capacities) {
-    if (source.nodes.empty()) return false;
+bool apply_relocate_vns(Solution& sol, const vector<int>& demands, const vector<int>& capacities,
+                        const vector<vector<double>>& dist, mt19937& gen) {
+    if (sol.routes.size() < 2) return false;
     
-    static thread_local mt19937 gen(random_device{}());
-    uniform_int_distribution<> dist_source(0, source.nodes.size()-1);
+    uniform_int_distribution<> truck_dist(0, sol.routes.size() - 1);
+    int t1 = truck_dist(gen);
+    int t2 = truck_dist(gen);
+    if (t1 == t2) t2 = (t1 + 1) % sol.routes.size();
     
-    int pos_source = dist_source(gen);
-    int node = source.nodes[pos_source];
+    if (sol.routes[t1].empty()) return false;
     
-    // Verificar factibilidad antes de realizar la reubicación
-    if (target.load + demands[node] > capacities[target.vehicle_id]) {
-        return false; // La reubicación no es factible
+    uniform_int_distribution<> pos_dist(0, sol.routes[t1].size() - 1);
+    int pos = pos_dist(gen);
+    int node = sol.routes[t1][pos];
+    
+    // Verificar factibilidad
+    if (sol.loads[t2] + demands[node] > capacities[t2]) {
+        return false;
     }
     
-    // Eliminar de la ruta fuente
-    source.nodes.erase(source.nodes.begin() + pos_source);
-    source.load -= demands[node];
+    // Aplicar relocate
+    sol.routes[t1].erase(sol.routes[t1].begin() + pos);
+    sol.loads[t1] -= demands[node];
     
-    // Insertar en la ruta destino
-    uniform_int_distribution<> dist_target(0, target.nodes.size());
-    int pos_target = dist_target(gen);
-    target.nodes.insert(target.nodes.begin() + pos_target, node);
-    target.load += demands[node];
+    if (!sol.routes[t2].empty()) {
+        uniform_int_distribution<> insert_dist(0, sol.routes[t2].size());
+        int insert_pos = insert_dist(gen);
+        sol.routes[t2].insert(sol.routes[t2].begin() + insert_pos, node);
+    } else {
+        sol.routes[t2].push_back(node);
+    }
+    sol.loads[t2] += demands[node];
+    
+    // Recalcular distancias
+    sol.route_dists[t1] = compute_route_distance(sol.routes[t1], dist);
+    sol.route_dists[t2] = compute_route_distance(sol.routes[t2], dist);
+    update_total_distance(sol);
     
     return true;
 }
 
-// Operador 2-OPT: invierte un segmento de la ruta para mejorar el orden
-bool apply_two_opt(Route &route) {
-    int n = route.nodes.size(); 
-    if (n < 4) return false;
+bool apply_two_opt_vns(Solution& sol, const vector<vector<double>>& dist, mt19937& gen) {
+    if (sol.routes.empty()) return false;
     
-    static thread_local mt19937 gen(random_device{}());
-    uniform_int_distribution<> dist_i(0, n-3);
-    int i = dist_i(gen);
-    uniform_int_distribution<> dist_j(i+2, n-1);
-    int j = dist_j(gen);
+    uniform_int_distribution<> truck_dist(0, sol.routes.size() - 1);
+    int t = truck_dist(gen);
     
-    // Invertir el segmento [i+1, j]
-    reverse(route.nodes.begin()+i+1, route.nodes.begin()+j+1);
+    if (sol.routes[t].size() < 4) return false;
+    
+    int n = sol.routes[t].size();
+    uniform_int_distribution<> i_dist(0, n - 3);
+    int i = i_dist(gen);
+    uniform_int_distribution<> j_dist(i + 2, n - 1);
+    int j = j_dist(gen);
+    
+    // Aplicar 2-opt
+    reverse(sol.routes[t].begin() + i, sol.routes[t].begin() + j + 1);
+    
+    // Recalcular distancia
+    sol.route_dists[t] = compute_route_distance(sol.routes[t], dist);
+    update_total_distance(sol);
     
     return true;
 }
 
-// Clase base para operadores (mejora la modularidad y extensibilidad)
-class Operator {
-public:
-    virtual ~Operator() = default;
-    virtual bool apply(Route& source, Route& target, 
-                      const vector<int>& demands, const vector<int>& capacities) const = 0;
-    virtual string name() const = 0;
-};
-
-class SwapOperator : public Operator {
-public:
-    bool apply(Route& source, Route& target, 
-              const vector<int>& demands, const vector<int>& capacities) const override {
-        return apply_swap(source, target, demands, capacities);
-    }
-    string name() const override { return "SWAP"; }
-};
-
-class RelocateOperator : public Operator {
-public:
-    bool apply(Route& source, Route& target, 
-              const vector<int>& demands, const vector<int>& capacities) const override {
-        return apply_relocate(source, target, demands, capacities);
-    }
-    string name() const override { return "RELOCATE"; }
-};
-
-class TwoOptOperator : public Operator {
-public:
-    bool apply(Route& source, Route& target, 
-              const vector<int>& demands, const vector<int>& capacities) const override {
-        if (&source != &target) return false; // Two-opt solo funciona en una misma ruta
-        return apply_two_opt(source);
-    }
-    string name() const override { return "TWO-OPT"; }
-};
-
-// --- Algoritmo de construcción inicial mejorado ---
-Solution initial_solution_hetero_savings(
-    DistanceCache& D,
+// --- Algoritmo VNS principal ---
+Solution vns_search(
+    const vector<vector<double>>& dist,
+    const vector<int>& objectives,
     const vector<int>& demands,
     const vector<int>& capacities,
-    const VNSConfig& config)
-{
-    int m = demands.size() - 1;  // Número de clientes (sin contar el depósito)
-    int K = capacities.size();   // Número de vehículos disponibles
-    
-    // Inicializamos las rutas vacías, una por cada vehículo
-    vector<Route> routes;
-    routes.reserve(K);
-    for (int i = 0; i < K; ++i)
-        routes.push_back(Route{{}, 0.0, 0, {}, i});
-    
-    // Calculamos los ahorros (savings) para cada par de clientes
-    struct Saving {int i, j; double value;};
-    vector<Saving> savings;
-    savings.reserve(m * (m-1) / 2);
-    
-    for (int i = 1; i <= m; ++i) {
-        for (int j = i+1; j <= m; ++j) {
-            double saving = D.get(0, i) + D.get(0, j) - D.get(i, j);
-            savings.push_back({i, j, saving});
-        }
-    }
-    
-    // Ordenamos los ahorros de mayor a menor
-    sort(savings.begin(), savings.end(), 
-         [](const Saving& a, const Saving& b) { return a.value > b.value; });
-    
-    // Inicialmente, cada cliente está en su propia ruta temporal
-    vector<Route> temp;
-    temp.reserve(m);
-    for (int i = 1; i <= m; ++i) {
-        double cost = D.get(0, i) * 2; // Ida y vuelta al depósito
-        temp.push_back(Route{{i}, cost, demands[i], {0.0, D.get(0, i)}, -1});
-    }
-    
-    // Fusionamos rutas según los ahorros calculados, respetando capacidades
-    for (const auto& saving : savings) {
-        int route_i = -1, route_j = -1;
-        
-        // Buscamos las rutas que tienen los clientes i y j en sus extremos
-        for (int k = 0; k < temp.size(); ++k) {
-            const auto& nodes = temp[k].nodes;
-            if (nodes.empty()) continue;
-            
-            if (nodes.front() == saving.i) route_i = k;
-            if (nodes.back() == saving.j) route_j = k;
-        }
-        
-        // Si encontramos ambos clientes y están en rutas diferentes
-        if (route_i >= 0 && route_j >= 0 && route_i != route_j) {
-            int combined_load = temp[route_i].load + temp[route_j].load;
-            
-            // Intentamos asignar a un vehículo con capacidad suficiente
-            for (int v = 0; v < K; ++v) {
-                if (combined_load <= capacities[v]) {
-                    // Fusionamos las rutas
-                    temp[route_i].nodes.insert(
-                        temp[route_i].nodes.end(),
-                        temp[route_j].nodes.begin(), temp[route_j].nodes.end());
-                    temp[route_i].load = combined_load;
-                    update_route(temp[route_i], D);
-                    temp[route_i].vehicle_id = v;
-                    
-                    // Eliminamos la ruta j (swap con el último y pop_back para eficiencia)
-                    if (route_j < temp.size() - 1)
-                        temp[route_j] = std::move(temp.back());
-                    temp.pop_back();
-                    break;
-                }
-            }
-        }
-    }
-    
-    // Insertamos los clientes no asignados con el método de mejor inserción
-    vector<bool> used(m + 1, false);
-    for (const auto& route : temp) {
-        for (int node : route.nodes) {
-            used[node] = true;
-        }
-    }
-    
-    vector<int> unassigned;
-    for (int i = 1; i <= m; ++i) {
-        if (!used[i]) unassigned.push_back(i);
-    }
-    
-    // Para cada cliente sin asignar
-    for (int client : unassigned) {
-        struct Insertion {
-            double cost_increase;
-            int route_index;
-            int position;
-            int vehicle_id;
-        };
-        vector<Insertion> candidates;
-        
-        // Evaluamos todas las posibles inserciones
-        for (int v = 0; v < K; ++v) {
-            if (demands[client] > capacities[v]) continue;
-            
-            for (int r = 0; r < temp.size(); ++r) {
-                auto& route = temp[r];
-                if (route.vehicle_id != -1 && route.vehicle_id != v) continue;
-                if (route.load + demands[client] > capacities[v]) continue;
-                
-                int n = route.nodes.size();
-                for (int pos = 0; pos <= n; ++pos) {
-                    int prev = (pos > 0 ? route.nodes[pos-1] : 0);
-                    int next = (pos < n ? route.nodes[pos] : 0);
-                    
-                    double delta = D.get(prev, client) + D.get(client, next) - D.get(prev, next);
-                    candidates.push_back({delta, r, pos, v});
-                }
-            }
-        }
-        
-        // Si no hay candidatos factibles, creamos una nueva ruta
-        if (candidates.empty()) {
-            // Buscamos el vehículo con menor capacidad que pueda llevar al cliente
-            int best_v = -1;
-            int min_cap = numeric_limits<int>::max();
-            
-            for (int v = 0; v < K; ++v) {
-                if (demands[client] <= capacities[v] && capacities[v] < min_cap) {
-                    min_cap = capacities[v];
-                    best_v = v;
-                }
-            }
-            
-            if (best_v != -1) {
-                double cost = D.get(0, client) * 2;
-                temp.push_back(Route{{client}, cost, demands[client], {0.0, D.get(0, client)}, best_v});
-            } else {
-                throw runtime_error("No se puede asignar el cliente " + to_string(client) + 
-                                   ". Demanda: " + to_string(demands[client]));
-            }
-        } else {
-            // Ordenamos candidatos por menor incremento de coste
-            sort(candidates.begin(), candidates.end(), 
-                 [](const Insertion& a, const Insertion& b) { return a.cost_increase < b.cost_increase; });
-            
-            // Insertamos en la mejor posición
-            const auto& best = candidates.front();
-            auto& route = temp[best.route_index];
-            
-            route.nodes.insert(route.nodes.begin() + best.position, client);
-            route.load += demands[client];
-            route.vehicle_id = best.vehicle_id;
-            update_route(route, D);
-        }
-    }
-    
-    // Asignamos las rutas temporales a la solución final
-    int route_index = 0;
-    for (auto& temp_route : temp) {
-        if (route_index < K) {
-            routes[route_index] = std::move(temp_route);
-            route_index++;
-        }
-    }
-    
-    // Calculamos el coste total de la solución
-    double total_cost = 0.0;
-    for (auto& route : routes) {
-        update_route(route, D);
-        total_cost += route.cost;
-    }
-    
-    return {std::move(routes), total_cost};
-}
-
-// --- VND (Variable Neighborhood Descent) mejorado ---
-void VND(Route &route,
-         DistanceCache& D,
-         const vector<int>& demands,
-         const vector<int>& capacities,
-         vector<double>& op_weights,
-         const VNSConfig& config)
-{
-    vector<unique_ptr<Operator>> operators;
-    operators.push_back(make_unique<SwapOperator>());
-    operators.push_back(make_unique<RelocateOperator>());
-    operators.push_back(make_unique<TwoOptOperator>());
-    
-    int k = 0;
-    while (k < OP_COUNT) {
-        Route candidate = route.clone();
-        bool success = false;
-        
-        // Aplicamos el operador k-ésimo
-        success = operators[k]->apply(candidate, candidate, demands, capacities);
-        
-        if (success) {
-            update_route(candidate, D);
-            
-            // Si la nueva ruta es factible y mejor, la aceptamos
-            if (candidate.is_valid(demands, capacities) && candidate.cost < route.cost) {
-                route = std::move(candidate);
-                op_weights[k] *= config.intensification_factor;
-                k = 0;  // Reiniciamos desde el primer operador
-                continue;
-            }
-        }
-        
-        ++k;  // Pasamos al siguiente operador
-    }
-}
-
-// --- VNS (Variable Neighborhood Search) mejorado ---
-Solution vns_hetero_improved(
-    const vector<vector<double>>& distance_matrix,
-    const vector<int>& demands,
-    const vector<int>& capacities,
-    int max_iterations = 2000,
-    double time_limit = 10.0,
+    int num_trucks,
+    int max_iter = 1000,
+    double time_limit = 30.0,
     const VNSConfig& config = VNSConfig())
 {
-    // Validar entradas
-    try {
-        validate_input(distance_matrix, demands, capacities);
-        config.validate();
-    } catch (const exception& e) {
-        throw runtime_error(string("Error en los datos de entrada: ") + e.what());
-    }
-    
     auto start = Clock::now();
-    int num_vehicles = capacities.size();
-    
-    // Inicializar caché de distancias
-    DistanceCache D(distance_matrix, config.use_caching);
-    
-    // Construir solución inicial
-    Solution best_solution;
-    try {
-        best_solution = initial_solution_hetero_savings(D, demands, capacities, config);
-    } catch (const exception& e) {
-        throw runtime_error(string("Error al construir solución inicial: ") + e.what());
-    }
-    
-    Solution current_solution = best_solution.clone();
-    
-    // Inicializar pesos de operadores
-    vector<double> op_weights(OP_COUNT, 1.0);
-    
-    // Generador aleatorio
     mt19937 gen(random_device{}());
-    uniform_real_distribution<> probability(0.0, 1.0);
     
-    // Configurar máximo estancamiento
-    int max_stagnation = config.max_stagnation > 0 ? config.max_stagnation : max_iterations / 5;
-    int stagnation_counter = 0;
+    // Generar solución inicial
+    Solution current = generate_initial_solution_vns(objectives, demands, capacities, num_trucks, dist);
+    Solution best = current;
+    
+    int stagnation = 0;
+    int max_stagnation = config.max_stagnation > 0 ? config.max_stagnation : max_iter / 5;
     double shake_intensity = config.initial_shake_intensity;
     
-    // Configurar operadores
-    vector<unique_ptr<Operator>> operators;
-    operators.push_back(make_unique<SwapOperator>());
-    operators.push_back(make_unique<RelocateOperator>());
-    operators.push_back(make_unique<TwoOptOperator>());
-    
-    // Bucle principal de VNS
-    for (int iteration = 0; iteration < max_iterations && stagnation_counter < max_stagnation; ++iteration) {
+    for (int iter = 0; iter < max_iter && stagnation < max_stagnation; ++iter) {
         // Verificar límite de tiempo
         double elapsed = chrono::duration<double>(Clock::now() - start).count();
         if (elapsed > time_limit) break;
         
-        // Número de perturbaciones basado en la intensidad actual
-        int num_perturbations = max(1, static_cast<int>(shake_intensity));
-        Solution trial_solution = current_solution.clone();
+        Solution trial = current;
         
-        // Fase de perturbación (Shaking)
-        for (int s = 0; s < num_perturbations; ++s) {
-            // Selección adaptativa de operador según pesos
-            double sum_weights = accumulate(op_weights.begin(), op_weights.end(), 0.0);
-            double r = probability(gen) * sum_weights;
-            double acc = 0.0;
-            int chosen_op = 0;
+        // Fase de perturbación (shaking)
+        int num_perturbations = max(1, static_cast<int>(shake_intensity));
+        for (int p = 0; p < num_perturbations; ++p) {
+            int op = gen() % OP_COUNT;
             
+            switch (op) {
+                case SWAP:
+                    apply_swap_vns(trial, demands, capacities, dist, gen);
+                    break;
+                case RELOCATE:
+                    apply_relocate_vns(trial, demands, capacities, dist, gen);
+                    break;
+                case TWO_OPT:
+                    apply_two_opt_vns(trial, dist, gen);
+                    break;
+            }
+        }
+        
+        // Búsqueda local simple (VND)
+        bool improved = true;
+        while (improved) {
+            improved = false;
+            Solution candidate = trial;
+            
+            // Probar cada operador
             for (int op = 0; op < OP_COUNT; ++op) {
-                acc += op_weights[op];
-                if (r <= acc) {
-                    chosen_op = op;
+                bool success = false;
+                switch (op) {
+                    case SWAP:
+                        success = apply_swap_vns(candidate, demands, capacities, dist, gen);
+                        break;
+                    case RELOCATE:
+                        success = apply_relocate_vns(candidate, demands, capacities, dist, gen);
+                        break;
+                    case TWO_OPT:
+                        success = apply_two_opt_vns(candidate, dist, gen);
+                        break;
+                }
+                
+                if (success && candidate.total_distance < trial.total_distance) {
+                    trial = candidate;
+                    improved = true;
                     break;
                 }
             }
-            
-            // Selección aleatoria de rutas
-            uniform_int_distribution<> route_dist(0, num_vehicles - 1);
-            int route_i = route_dist(gen);
-            int route_j = route_dist(gen);
-            
-            // Aplicamos el operador elegido
-            operators[chosen_op]->apply(
-                trial_solution.routes[route_i], 
-                trial_solution.routes[route_j],
-                demands, 
-                capacities
-            );
         }
         
-        // Fase de búsqueda local: VND en cada ruta
-        if (num_vehicles >= config.openmp_threshold) {
-            #pragma omp parallel for schedule(dynamic)
-            for (int i = 0; i < num_vehicles; ++i) {
-                VND(trial_solution.routes[i], D, demands, capacities, op_weights, config);
-            }
-        } else {
-            for (int i = 0; i < num_vehicles; ++i) {
-                VND(trial_solution.routes[i], D, demands, capacities, op_weights, config);
-            }
-        }
-        
-        // Recalculamos el coste total
-        trial_solution.total_cost = 0.0;
-        for (auto& route : trial_solution.routes) {
-            update_route(route, D);
-            trial_solution.total_cost += route.cost;
-        }
-        
-        // Evaluación de la solución
-        if (trial_solution.total_cost < best_solution.total_cost) {
-            // Si es mejor que la mejor conocida, actualizamos
-            best_solution = trial_solution.clone();
-            current_solution = trial_solution;
-            stagnation_counter = 0;
-            
-            // Reducimos pesos de operadores para diversificar
-            for (auto& weight : op_weights) {
-                weight = max(1.0, weight * config.diversification_factor);
-            }
-            
+        // Evaluar solución
+        if (trial.total_distance < best.total_distance) {
+            best = trial;
+            current = trial;
+            stagnation = 0;
             shake_intensity = config.initial_shake_intensity;
         } else {
-            // Si no mejora, seguimos explorando
-            current_solution = trial_solution;
-            stagnation_counter++;
-            
-            // Aumentamos intensidad de perturbación
+            current = trial;
+            stagnation++;
             shake_intensity = min(config.max_shake_intensity, 
                                   shake_intensity * config.shake_increase);
         }
     }
     
-    return best_solution;
+    return best;
 }
 
-// --- Interfaz Python mejorada ---
+// Función principal compatible con ts_solver
+py::list solve_vrp(
+    py::array_t<double, py::array::c_style | py::array::forcecast> dist_matrix_np,
+    py::array_t<int,    py::array::c_style | py::array::forcecast> objectives_np,
+    py::array_t<int,    py::array::c_style | py::array::forcecast> demands_np,
+    py::array_t<int,    py::array::c_style | py::array::forcecast> capacities_np,
+    int num_trucks,
+    int max_iter = 1000,
+    double time_limit = 30.0)
+{
+    // Validar entrada
+    auto buf_dist = dist_matrix_np.request();
+    if (buf_dist.ndim != 2 || buf_dist.shape[0] != buf_dist.shape[1]) {
+        throw runtime_error("dist_matrix must be a square 2D array");
+    }
+    int n_points = buf_dist.shape[0];
+
+    auto buf_obj = objectives_np.request();
+    if (buf_obj.ndim != 1) {
+        throw runtime_error("objectives must be a 1D array");
+    }
+    int m = buf_obj.shape[0];
+
+    auto buf_dem = demands_np.request();
+    if (buf_dem.ndim != 1 || buf_dem.shape[0] != n_points) {
+        throw runtime_error("demands must be a 1D array of length n_points");
+    }
+
+    auto buf_cap = capacities_np.request();
+    if (buf_cap.ndim != 1 || buf_cap.shape[0] != num_trucks) {
+        throw runtime_error("capacities must be a 1D array of length num_trucks");
+    }
+
+    // Construir matriz de distancias
+    vector<vector<double>> dist(n_points, vector<double>(n_points));
+    const double* dist_ptr = static_cast<double*>(buf_dist.ptr);
+    for (int i = 0; i < n_points; ++i) {
+        for (int j = 0; j < n_points; ++j) {
+            dist[i][j] = dist_ptr[i * n_points + j];
+        }
+    }
+
+    // Extraer objetivos
+    vector<int> objectives(m);
+    const int* obj_ptr = static_cast<int*>(buf_obj.ptr);
+    for (int i = 0; i < m; ++i) {
+        int v = obj_ptr[i];
+        if (v <= 0 || v >= n_points) {
+            throw runtime_error("each objective must be in [1, n_points-1]");
+        }
+        objectives[i] = v;
+    }
+
+    // Extraer demandas
+    vector<int> demands(n_points);
+    const int* dem_ptr = static_cast<int*>(buf_dem.ptr);
+    for (int i = 0; i < n_points; ++i) {
+        if (dem_ptr[i] < 0) {
+            throw runtime_error("demands must be >= 0 for each node");
+        }
+        demands[i] = dem_ptr[i];
+    }
+
+    // Extraer capacidades
+    vector<int> capacities(num_trucks);
+    const int* cap_ptr = static_cast<int*>(buf_cap.ptr);
+    for (int i = 0; i < num_trucks; ++i) {
+        if (cap_ptr[i] <= 0) {
+            throw runtime_error("capacities must be > 0 for each truck");
+        }
+        capacities[i] = cap_ptr[i];
+    }
+
+    // Ejecutar VNS
+    Solution best = vns_search(
+        dist, objectives, demands, capacities, num_trucks,
+        max_iter, time_limit
+    );
+
+    // Convertir routes a py::list (mismo formato que ts_solver)
+    py::list py_routes;
+    for (auto &r : best.routes) {
+        py::list rr;
+        for (int node : r) {
+            rr.append(node);
+        }
+        py_routes.append(rr);
+    }
+    return py_routes;
+}
+
 PYBIND11_MODULE(vns_solver, m) {
-    // Documentación del módulo
-    m.doc() = "Módulo de resolución VNS para problemas de enrutamiento de vehículos con flota heterogénea";
+    m.doc() = "VRP con Variable Neighborhood Search (VNS) - formato compatible con ts_solver";
     
-    // Exponemos la configuración de VNS
+    // Función principal compatible
+    m.def(
+        "solve_vrp",
+        &solve_vrp,
+        py::arg("dist_matrix"),
+        py::arg("objectives"),
+        py::arg("demands"),
+        py::arg("capacities"),
+        py::arg("num_trucks"),
+        py::arg("max_iter") = 1000,
+        py::arg("time_limit") = 30.0,
+        R"pbdoc(
+            Resuelve un VRP con Variable Neighborhood Search.
+
+            Args:
+                dist_matrix (ndarray[double, 2D]): Matriz de distancias n_points×n_points.
+                objectives   (ndarray[int, 1D]): Índices de nodos objetivos (1..n_points-1).
+                demands      (ndarray[int, 1D]): Demanda de cada nodo (longitud n_points).
+                capacities   (ndarray[int, 1D]): Capacidad de cada camión.
+                num_trucks   (int): Número de camiones.
+                max_iter     (int, opcional): Iteraciones máximas (por defecto 1000).
+                time_limit   (double, opcional): Tiempo límite en segundos (por defecto 30.0).
+
+            Returns:
+                List[List[int]]: Lista de rutas, cada ruta es un array de nodos (sin incluir depósito).
+        )pbdoc"
+    );
+    
+    // Mantener funciones legacy para compatibilidad con código existente
     py::class_<VNSConfig>(m, "VNSConfig")
         .def(py::init<>())
         .def_readwrite("openmp_threshold", &VNSConfig::openmp_threshold)
-        .def_readwrite("top_k_insert", &VNSConfig::top_k_insert)
-        .def_readwrite("intensification_factor", &VNSConfig::intensification_factor)
-        .def_readwrite("diversification_factor", &VNSConfig::diversification_factor)
-        .def_readwrite("initial_shake_intensity", &VNSConfig::initial_shake_intensity)
-        .def_readwrite("max_shake_intensity", &VNSConfig::max_shake_intensity)
-        .def_readwrite("shake_increase", &VNSConfig::shake_increase)
         .def_readwrite("max_stagnation", &VNSConfig::max_stagnation)
-        .def_readwrite("use_caching", &VNSConfig::use_caching)
         .def("validate", &VNSConfig::validate);
-    
-    // Exponemos las estructuras de datos
-    py::class_<Route>(m, "Route")
-        .def_readonly("nodes", &Route::nodes)
-        .def_readonly("cost", &Route::cost)
-        .def_readonly("load", &Route::load)
-        .def_readonly("vehicle_id", &Route::vehicle_id)
-        .def("is_valid", &Route::is_valid);
-    
-    py::class_<Solution>(m, "Solution")
-        .def_readonly("routes", &Solution::routes)
-        .def_readonly("total_cost", &Solution::total_cost)
-        .def("is_valid", &Solution::is_valid);
-    
-    // Exponemos la función principal
-    m.def("vns_hetero_improved", &vns_hetero_improved,
-          py::arg("distance_matrix"),
-          py::arg("demands"),
-          py::arg("capacities"),
-          py::arg("max_iterations") = 2000,
-          py::arg("time_limit") = 10.0,
-          py::arg("config") = VNSConfig(),
-          "Resuelve un problema de enrutamiento de vehículos con flota heterogénea usando VNS");
-    
-    // Función simplificada para compatibilidad
-    m.def("vns_hetero_simplified", [](
-        const vector<vector<double>>& distance_matrix,
-        const vector<int>& demands,
-        const vector<int>& capacities,
-        int max_iterations,
-        double time_limit,
-        const VNSConfig& config = VNSConfig()) 
-    {
-        Solution solution = vns_hetero_improved(
-            distance_matrix, demands, capacities, 
-            max_iterations, time_limit, config);
-        
-        vector<vector<int>> routes_nodes;
-        for (const auto& route : solution.routes) {
-            routes_nodes.push_back(route.nodes);
-        }
-        return routes_nodes;
-    },
-    py::arg("distance_matrix"),
-    py::arg("demands"),
-    py::arg("capacities"),
-    py::arg("max_iterations") = 2000,
-    py::arg("time_limit") = 10.0,
-    py::arg("config") = VNSConfig(),
-    "Versión simplificada que devuelve solo las listas de nodos");
 }

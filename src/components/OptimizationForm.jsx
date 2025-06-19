@@ -3,6 +3,7 @@ import { basePanel, getZonePosition, Z_LAYERS } from './LayoutManager';
 
 const OptimizationForm = ({ 
   onSubmit, 
+  setOptimizedRoutes, 
   selectionMode, 
   setSelectionMode, 
   selectedDepot, 
@@ -13,6 +14,7 @@ const OptimizationForm = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [showManualConfig, setShowManualConfig] = useState(false);
+  const [selectedSolver, setSelectedSolver] = useState('vns_solver'); // Nuevo estado para el solver
   
   // Estados para configuración manual (fallback)
   const [numTrucks, setNumTrucks] = useState(2);
@@ -120,7 +122,8 @@ const OptimizationForm = ({
         body: JSON.stringify({
           depot_info: selectedDepot,
           targets_info: selectedTargets,
-          user_description: description
+          user_description: description,
+          solver: selectedSolver  // Incluir el solver seleccionado
         })
       });
 
@@ -170,9 +173,12 @@ const OptimizationForm = ({
       target_points: selectedTargets.map(t => t.id),
       num_trucks: numTrucks,
       truck_capacities: capacities,
-      target_demands: target_demands
+      target_demands: target_demands,
+      solver: selectedSolver // Añadir el solver seleccionado
     });
   };
+
+  // ...existing styles...
 
   return (
     <div style={panelStyles}>
@@ -396,6 +402,43 @@ const OptimizationForm = ({
           </div>
         )}
 
+        {/* Nueva Sección de Solver */}
+        <div style={sectionStyles}>
+          <div style={sectionTitleStyles}>
+            <span>⚙️</span>
+            Algoritmo de Optimización
+          </div>
+          
+          <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '6px' }}>
+            Metaheurística:
+          </label>
+          <select 
+            style={{
+              ...inputStyles,
+              marginBottom: '8px'
+            }}
+            value={selectedSolver}
+            onChange={(e) => setSelectedSolver(e.target.value)}
+          >
+            <option value="vns_solver">VNS - Variable Neighborhood Search</option>
+            <option value="ts_solver">Tabu Search</option>
+            <option value="sa_solver">Simulated Annealing</option>
+            <option value="ag_solver">Algoritmo Genético</option>
+          </select>
+          
+          {/* Descripción del algoritmo seleccionado */}
+          <div style={{
+            fontSize: '11px',
+            color: '#6b7280',
+            backgroundColor: '#f9fafb',
+            padding: '8px',
+            borderRadius: '6px',
+            marginBottom: '8px'
+          }}>
+            {getSolverDescription(selectedSolver)}
+          </div>
+        </div>
+
         {/* Botones de Acción */}
         <div style={{ display: 'flex', gap: '8px' }}>
           <button 
@@ -432,6 +475,17 @@ const OptimizationForm = ({
       </div>
     </div>
   );
+};
+
+// Función para obtener la descripción del solver
+const getSolverDescription = (solver) => {
+  const descriptions = {
+    'vns_solver': '🔍 Búsqueda en Vecindario Variable: Explora diferentes estructuras de vecindario sistemáticamente. Bueno para problemas medianos con soluciones de calidad.',
+    'ts_solver': '🚫 Búsqueda Tabú: Usa memoria para evitar ciclos y explorar nuevas regiones. Excelente para escape de óptimos locales.',
+    'sa_solver': '🌡️ Recocido Simulado: Acepta soluciones peores ocasionalmente para explorar el espacio. Robusto para problemas complejos.',
+    'ag_solver': '🧬 Algoritmo Genético: Evoluciona poblaciones de soluciones mediante selección y cruce. Bueno para exploración global.'
+  };
+  return descriptions[solver] || 'Algoritmo de optimización seleccionado';
 };
 
 export default OptimizationForm;
