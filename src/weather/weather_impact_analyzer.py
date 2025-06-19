@@ -10,6 +10,10 @@ from typing import Dict, Any, Tuple, Optional, List
 import asyncio
 import requests
 from datetime import datetime
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
+from crawler.weather_crawler import OpenMeteoCrawler
 
 # Añadir rutas al path
 current_dir = os.path.dirname(__file__)
@@ -67,67 +71,6 @@ class WeatherImpactAnalyzer:
                 print(f"Error entrenando modelo: {e}")
                 print("Continuando con solo el grafo de conocimiento...")
     
-    async def get_current_weather(self) -> Optional[Dict[str, Any]]:
-        """Obtiene el clima actual de La Habana desde open-meteo.com"""
-        try:
-            url = "https://api.open-meteo.com/v1/forecast"
-            params = {
-                "latitude": self.latitude,
-                "longitude": self.longitude,
-                "current": [
-                    "temperature_2m",
-                    "precipitation",
-                    "wind_speed_10m",
-                    "cloud_cover",
-                    "weather_code",
-                    "visibility"
-                ],
-                "timezone": "America/Havana"
-            }
-            
-            # Usar aiohttp para petición asíncrona
-            import aiohttp
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=params) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        return data.get('current', {})
-                    else:
-                        print(f"Error obteniendo clima actual: {response.status}")
-                        return None
-        except Exception as e:
-            print(f"Error en petición de clima: {e}")
-            return None
-    
-    def get_current_weather_sync(self) -> Optional[Dict[str, Any]]:
-        """Versión síncrona para obtener el clima actual"""
-        try:
-            url = "https://api.open-meteo.com/v1/forecast"
-            params = {
-                "latitude": self.latitude,
-                "longitude": self.longitude,
-                "current": [
-                    "temperature_2m",
-                    "precipitation",
-                    "wind_speed_10m",
-                    "cloud_cover",
-                    "weather_code",
-                    "visibility"
-                ],
-                "timezone": "America/Havana"
-            }
-            
-            response = requests.get(url, params=params, timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                return data.get('current', {})
-            else:
-                print(f"Error obteniendo clima actual: {response.status_code}")
-                return None
-        except Exception as e:
-            print(f"Error en petición de clima: {e}")
-            return None
-    
     def calculate_weather_impact_factor(self, weather_data: Dict[str, Any] = None) -> Tuple[float, Dict[str, Any]]:
         """
         Calcula el factor de impacto del clima combinando ambos enfoques
@@ -140,7 +83,7 @@ class WeatherImpactAnalyzer:
         """
         # Obtener datos del clima si no se proporcionan
         if weather_data is None:
-            weather_data = self.get_current_weather_sync()
+            weather_data = OpenMeteoCrawler.get_current_weather_sync()
             if weather_data is None:
                 # Usar datos por defecto si no se puede obtener clima actual
                 weather_data = {
@@ -343,7 +286,7 @@ class WeatherImpactAnalyzer:
         """
         # Obtener datos del clima si no se proporcionan
         if weather_data is None:
-            weather_data = self.get_current_weather_sync()
+            weather_data = OpenMeteoCrawler.get_current_weather_sync()
             if weather_data is None:
                 return {
                     'motorway': 1.0,
