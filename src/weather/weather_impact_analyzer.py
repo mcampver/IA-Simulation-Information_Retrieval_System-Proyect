@@ -10,6 +10,9 @@ from typing import Dict, Any, Tuple, Optional, List
 import asyncio
 import requests
 from datetime import datetime
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
 from crawler.weather_crawler import OpenMeteoCrawler
 
 # Añadir rutas al path

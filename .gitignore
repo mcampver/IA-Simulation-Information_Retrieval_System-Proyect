@@ -3,7 +3,19 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
-#Tester del Crawler
+# Ignorar todos los directorios .egg-info en el proyecto
+**/*.egg-info/
+
+src/metaheuristic/ag_solver/build/lib.linux-x86_64-3.10/
+src/metaheuristic/ag_solver/build/temp.linux-x86_64-3.10/
+src/metaheuristic/sa_solver/build/lib.linux-x86_64-3.10/
+src/metaheuristic/sa_solver/build/temp.linux-x86_64-3.10/
+src/metaheuristic/ts_solver/build/lib.linux-x86_64-3.10/
+src/metaheuristic/ts_solver/build/temp.linux-x86_64-3.10/
+src/metaheuristic/vns_solver/build/lib.linux-x86_64-3.10/
+src/metaheuristic/vns_solver/build/temp.linux-x86_64-3.10/
+
+# Tester del Crawler
 src/test_weather_crawler.py
 src/test_traffic_crawler.py
 
