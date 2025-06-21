@@ -55,7 +55,6 @@ def analyze_graph_connectivity():
     if not street_graph.nodes:
         print("❌ Grafo vacío")
         return
-    print("Grafo poblado")
     
     # Analizar componentes conectados
     components = list(nx.weakly_connected_components(street_graph))
