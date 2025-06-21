@@ -48,6 +48,33 @@ def haversine(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
     return R * c
 
+def analyze_graph_connectivity():
+    """Analiza la conectividad del grafo cargado"""
+    import networkx as nx
+    
+    if not street_graph.nodes:
+        print("❌ Grafo vacío")
+        return
+    print("Grafo poblado")
+    
+    # Analizar componentes conectados
+    components = list(nx.weakly_connected_components(street_graph))
+    print(f"📊 Análisis del grafo:")
+    print(f"  - Total de nodos: {len(street_graph.nodes)}")
+    print(f"  - Total de aristas: {len(street_graph.edges)}")
+    print(f"  - Componentes conectados: {len(components)}")
+    
+    if len(components) > 1:
+        # Mostrar información de componentes
+        component_sizes = sorted([len(c) for c in components], reverse=True)
+        print(f"  - Componente principal: {component_sizes[0]} nodos ({component_sizes[0]/len(street_graph.nodes)*100:.1f}%)")
+        print(f"  - Otros componentes: {component_sizes[1:]}")
+        
+        largest_component = max(components, key=len)
+        print(f"  - Recomendación: Usar solo nodos del componente principal para garantizar conectividad")
+    else:
+        print(f"  - ✅ Grafo completamente conectado")
+
 def load_streets():
     """Carga los datos del mapa desde los archivos de caché y construye el grafo de calles"""
     global street_graph, all_nodes, street_congestion
@@ -695,29 +722,4 @@ def find_closest_reachable_node(street_graph, start_node, target_node, component
     
     return None
 
-def analyze_graph_connectivity():
-    """Analiza la conectividad del grafo cargado"""
-    import networkx as nx
-    
-    if not street_graph.nodes:
-        print("❌ Grafo vacío")
-        return
-    
-    # Analizar componentes conectados
-    components = list(nx.weakly_connected_components(street_graph))
-    print(f"📊 Análisis del grafo:")
-    print(f"  - Total de nodos: {len(street_graph.nodes)}")
-    print(f"  - Total de aristas: {len(street_graph.edges)}")
-    print(f"  - Componentes conectados: {len(components)}")
-    
-    if len(components) > 1:
-        # Mostrar información de componentes
-        component_sizes = sorted([len(c) for c in components], reverse=True)
-        print(f"  - Componente principal: {component_sizes[0]} nodos ({component_sizes[0]/len(street_graph.nodes)*100:.1f}%)")
-        print(f"  - Otros componentes: {component_sizes[1:]}")
-        
-        largest_component = max(components, key=len)
-        print(f"  - Recomendación: Usar solo nodos del componente principal para garantizar conectividad")
-    else:
-        print(f"  - ✅ Grafo completamente conectado")
 

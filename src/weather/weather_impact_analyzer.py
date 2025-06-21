@@ -83,7 +83,8 @@ class WeatherImpactAnalyzer:
         """
         # Obtener datos del clima si no se proporcionan
         if weather_data is None:
-            weather_data = OpenMeteoCrawler.get_current_weather_sync()
+            OpenMeteoAPI = OpenMeteoCrawler(self.latitude, self.longitude, 3, 1)
+            weather_data = OpenMeteoAPI.get_current_weather_sync()
             if weather_data is None:
                 # Usar datos por defecto si no se puede obtener clima actual
                 weather_data = {
