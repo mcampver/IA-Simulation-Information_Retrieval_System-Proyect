@@ -4,7 +4,9 @@ from vector_cache.store.faiss_store import FaissStore
 from optimized_route import optimize_delivery_routes
 
 # Creamos el índice la primera vez (dim = embedding_dim + 2 coords)
-_dim = __import__("VectorCache.embeddings.model").embeddings.model._model.get_sentence_embedding_dimension() + 2
+# dim = embedding_dim + 3 valores numéricos (lat, lon, num_vehicles)
+emb_dim = __import__("VectorCache.embeddings.model").embeddings.model._model.get_sentence_embedding_dimension()
+_dim = emb_dim + 3
 _store = FaissStore(dim=_dim)
 
 def get_or_compute_route(context: dict) -> tuple[list, str]:

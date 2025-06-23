@@ -7,7 +7,8 @@ class Settings(BaseSettings):
     similarity_threshold: float = Field(0.90, env="VECTOR_THRESHOLD")
     # Nombre del modelo de embeddings
     model_name: str = Field("all-MiniLM-L6-v2", env="EMBEDDINGS_MODEL")
-
+    max_vehicles: int = Field(999999999, env="MAX_VEHICLES")
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

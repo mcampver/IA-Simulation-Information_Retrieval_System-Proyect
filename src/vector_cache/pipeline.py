@@ -3,6 +3,7 @@ import numpy as np
 
 from vector_cache.embeddings.model import encode
 from vector_cache.geocoding import get_latlon
+from vector_cache.config import settings
 
 def build_vector(context: dict) -> np.ndarray:
     """
@@ -28,8 +29,14 @@ def build_vector(context: dict) -> np.ndarray:
     # 3) Embedding textual
     vec_text = encode(canon)[0]  # (dim,)
 
-    # 4) Concatena lat/lon normalizados (rango aproximado [-90,90]/[-180,180])
-    vec = np.concatenate([vec_text, np.array([avg_lat/90, avg_lon/180])])
+    # 4) Concatenamos lat/lon y num_vehicles normalizado
+    num_veh = context.get("num_vehicles", 1)
+    # Escalamos a [0,1]
+    veh_norm = min(num_veh, settings.max_vehicles) / settings.max_vehicles
+    vec = np.concatenate([
+        vec_text,
+        np.array([avg_lat/90, avg_lon/180, veh_norm])
+    ])
     # Quedará L2-normalizarlo nuevamente: aunque vec_text ya lo esté, 
     # la parte numérica puede romper la norma. 
     norm = np.linalg.norm(vec)
