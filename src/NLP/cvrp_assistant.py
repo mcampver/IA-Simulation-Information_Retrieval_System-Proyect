@@ -48,8 +48,20 @@ class CVRPAssistant:
         # Construir contexto para el análisis
         context = self._build_context(depot_info, targets_info, solver)
         
+        match = re.search(r'tengo\s+(\d+)\s+camiones', user_description, re.IGNORECASE)
+        explicit_trucks = int(match.group(1)) if match else None
+        
+                # 2) Preparamos un bloque que inyectaremos en el prompt
+        header_trucks = ""
+        if explicit_trucks is not None:
+            header_trucks = (
+                f"El usuario ha indicado que tiene EXACTAMENTE "
+                f"{explicit_trucks} camiones disponibles.\n\n"
+            )
+        
         # Prompt para analizar los requerimientos
         prompt = f"""
+        {header_trucks}
         El usuario tiene un problema de ruteo de vehículos (CVRP) con la siguiente configuración:
 
         DEPÓSITO:
@@ -66,7 +78,11 @@ class CVRPAssistant:
 
         Por favor, analiza la descripción del usuario y extrae la siguiente información considerando que se usará {solver.replace('_', ' ').title()}:
 
-        1. NÚMERO DE CAMIONES: ¿Cuántos vehículos necesita? Si no se especifica, sugiere un número razonable basado en los {len(targets_info)} destinos y el algoritmo {solver}.
+        1. NÚMERO DE CAMIONES: {
+            f"Usa EXACTAMENTE los {explicit_trucks} camiones que el usuario especificó."
+            if explicit_trucks is not None
+            else f"¿Cuántos vehículos necesita? Si no se especifica, sugiere un número razonable basado en los {len(targets_info)} destinos y el algoritmo {solver}."
+        }
 
         2. CAPACIDADES DE LOS CAMIONES: ¿Qué capacidad tiene cada camión? Si no se especifica, sugiere capacidades razonables.
 
