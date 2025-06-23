@@ -21,6 +21,9 @@ src/metaheuristic/vns_solver/build/temp.linux-x86_64-3.10/
 src/test_weather_crawler.py
 src/test_traffic_crawler.py
 
+# Carpeta de tests
+src/tests/
+
 # Entorno virtual
 ia_sim_sri/
 
