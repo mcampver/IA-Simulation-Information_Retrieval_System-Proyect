@@ -10,6 +10,7 @@ from src.vehicle import initialize_vehicles, update_vehicle_positions
 from src.traffic_lights import initialize_traffic_lights, update_traffic_lights
 from src.optimized_route import optimize_delivery_routes
 from src.NLP.cvrp_assistant import analyze_cvrp_requirements
+from src.NLP.RAG import create_vrp_rag_assistant
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 from flask import Flask, request, jsonify
@@ -25,6 +26,8 @@ except ImportError as e:
     print(f"Advertencia: Sistema climático no disponible: {e}")
     WEATHER_ANALYZER = None
 
+# Crear una instancia global del asistente RAG
+RAG_ASSISTANT = create_vrp_rag_assistant()
 
 traffic_lights = {}  # node_id: {"state": "red"/"green", "timer": X}
 
@@ -557,12 +560,66 @@ class CVRPHandler(BaseHTTPRequestHandler):
                     "message": "Error interno del servidor"
                 })
                 self.wfile.write(error_response.encode('utf-8'))
+        elif self.path == '/ask_rag':
+            try:
+                content_length = int(self.headers['Content-Length'])
+                post_data = self.rfile.read(content_length)
+                data = json.loads(post_data.decode('utf-8'))
+                
+                if not data or 'question' not in data:
+                    self.send_response(400)
+                    self.send_header('Content-type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    
+                    error_response = json.dumps({
+                        "success": False,
+                        "message": "Falta la pregunta"
+                    })
+                    self.wfile.write(error_response.encode('utf-8'))
+                    return
+                
+                # Extraer datos
+                question = data.get('question')
+                context_data = data.get('context_data', {})
+                
+                # Actualizar la base de conocimientos con el contexto
+                if 'routes' in context_data:
+                    RAG_ASSISTANT.update_knowledge_base("routes", {"routes": context_data['routes']})
+                
+                if 'weather' in context_data:
+                    RAG_ASSISTANT.update_knowledge_base("weather", context_data['weather'])
+                
+                # Obtener respuesta del asistente RAG
+                result = RAG_ASSISTANT.ask_with_context(question)
+                
+                # Enviar respuesta
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                
+                response_data = json.dumps(result)
+                self.wfile.write(response_data.encode('utf-8'))
+                
+            except Exception as e:
+                print(f"Error en consulta RAG: {e}")
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                
+                error_response = json.dumps({
+                    "success": False,
+                    "message": f"Error interno: {str(e)}"
+                })
+                self.wfile.write(error_response.encode('utf-8'))
         else:
             self.send_response(404)
             self.end_headers()
     
     def do_OPTIONS(self):
-        # Manejar preflight requests para CORS
+        # Actualizar para incluir /ask_rag en CORS
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'POST')
@@ -721,5 +778,40 @@ def find_closest_reachable_node(street_graph, start_node, target_node, component
         return radius_candidates[0][1]
     
     return None
+
+@app.route('/ask_rag', methods=['POST'])
+def ask_rag():
+    """Endpoint para consultar al asistente RAG con contexto"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'question' not in data:
+            return jsonify({
+                'success': False,
+                'message': 'Falta la pregunta'
+            }), 400
+        
+        # Extraer datos
+        question = data.get('question')
+        context_data = data.get('context_data', {})
+        
+        # Actualizar la base de conocimientos con el contexto
+        if 'routes' in context_data:
+            RAG_ASSISTANT.update_knowledge_base("routes", {"routes": context_data['routes']})
+        
+        if 'weather' in context_data:
+            RAG_ASSISTANT.update_knowledge_base("weather", context_data['weather'])
+        
+        # Obtener respuesta del asistente RAG
+        result = RAG_ASSISTANT.ask_with_context(question)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"Error en consulta RAG: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error interno: {str(e)}'
+        }), 500
 
 
