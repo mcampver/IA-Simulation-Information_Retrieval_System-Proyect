@@ -9,6 +9,10 @@ sys.path.append("src/metaheuristic/sa_solver")
 import sa_solver 
 sys.path.append("src/metaheuristic/ts_solver") 
 import ts_solver
+sys.path.append("src/traffic_events")
+from traffic_events_analyzer import apply_traffic_weights
+sys.path.append("src/crawler")
+from traffic_events_crawler   import TrafficCrawler
 
 # Importar el analizador de impacto climático
 sys.path.append("src/weather")
@@ -30,7 +34,8 @@ except ImportError as e:
 
 
 def optimize_delivery_routes(street_graph, start_point, target_points, num_trucks=1, 
-                            truck_capacities=None, target_demands=None, use_weather_impact=True,
+                            truck_capacities=None, target_demands=None, use_weather_impact=True, 
+                            use_traffic_impact: bool = False, traffic_impact_params: dict = None,
                             solver='vns_solver'):
     """
     Optimiza rutas de entrega con validación de conectividad
@@ -87,6 +92,21 @@ def optimize_delivery_routes(street_graph, start_point, target_points, num_truck
                 weather_factors = {'base': 1.0}
         else:
             print("Análisis climático deshabilitado o no disponible")
+
+        if use_traffic_impact:
+            params = traffic_impact_params or {}
+            crawler = params.get("crawler", TrafficCrawler())
+            eventos = crawler.crawl()   # lista de dicts con clave 'streets'
+            print(f"🔧 Aplicando {len(eventos)} eventos de tráfico")
+            apply_traffic_weights(
+                street_graph,
+                eventos,
+                penalty_factor=params.get("penalty_factor", 2.0),
+                penalty_offset=params.get("penalty_offset", 100.0),
+                city=params.get("city", "La Habana, Cuba"),
+                user_agent=params.get("user_agent", "route_optimizer"),
+                importance_threshold=params.get("importance_threshold", 0.5)
+            )    
         
         # Validar y preparar capacidades
         if not truck_capacities:

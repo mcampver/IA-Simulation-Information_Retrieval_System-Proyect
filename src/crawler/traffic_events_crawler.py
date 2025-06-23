@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import re
 from unidecode import unidecode
 
-from crawler.base_crawler import BaseCrawler
+from src.crawler.base_crawler import BaseCrawler
 
 
 class TrafficCrawler(BaseCrawler):
@@ -102,9 +102,9 @@ class TrafficCrawler(BaseCrawler):
             })
             print(resultados[0].get("title"))
 
-            if filtrar :
-                self.filter_response(resultados)
-                print(resultados[0].get("title"))
+        if filtrar :
+            self.filter_response(resultados)
+            print(resultados[0].get("title"))
 
         return resultados
     

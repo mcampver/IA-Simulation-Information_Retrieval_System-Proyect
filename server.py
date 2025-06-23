@@ -414,6 +414,7 @@ async def handle_optimization_request(websocket, data):
             truck_capacities=truck_capacities,
             target_demands=target_demands,
             use_weather_impact=True,
+            use_traffic_impact = True,
             solver=solver  # Pasar el solver seleccionado
         )
         
