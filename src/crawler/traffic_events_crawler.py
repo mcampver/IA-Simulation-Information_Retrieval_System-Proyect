@@ -117,7 +117,8 @@ class TrafficCrawler(BaseCrawler):
                 "playa", "regla", "guanabacoa", "10 de octubre",
                 "cerro", "arroyo naranjo", "boyeros", "cotorro",
                 "san miguel del padrón", "habana del este"]
-
+    
+    @staticmethod
     def _norm(text: str) -> str:
         """Minúsculas sin tildes para comparación robusta."""
         return unidecode(text.lower())
@@ -164,24 +165,32 @@ class TrafficCrawler(BaseCrawler):
             texto = self._norm(f"{art['title']} {art.get('snippet', '')}")
             if (any(k in texto for k in self.HABANA_KW)
                     and any(k in texto for k in self.CLOSURE_KW)):
+                print(f"✅ Candidato detectado: {art['title']}")
                 prelim.append(art)
+            else:
+                print(f"❌ Ignorado: {art['title']}")    
 
         # -------- Paso B : verificación y extracción de vías -------------
         finales = []
         for art in prelim:
+            print(f"🔎 Verificando artículo: {art['url']}")
             cuerpo = self._descarga_cuerpo(art["url"])
             if not cuerpo:
+                print("   ⚠️ No se pudo obtener el cuerpo del artículo.")
                 continue
 
             cuerpo_norm = self._norm(cuerpo)
             if not any(k in cuerpo_norm for k in self.CLOSURE_KW):
+                print("   🚫 No se detectan palabras clave de cierre en el texto completo.")
                 # No se confirma el cierre en el texto completo
                 continue
 
             calles = self._extrae_vias(cuerpo)
             if not calles:
+                print("   🚧 No se encontraron nombres de vías.")
                 # No se mencionan vías concretas; puedes decidir si descartas
                 continue
+            print(f"   ✅ Vías detectadas: {', '.join(calles)}")
 
             # Añadimos la lista de calles encontradas y guardamos
             art = art.copy()         # evitamos mutar el original
