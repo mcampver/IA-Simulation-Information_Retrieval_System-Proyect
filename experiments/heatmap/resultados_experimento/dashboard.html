@@ -1,0 +1,86 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Dashboard de Optimización</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1, h2 { color: #333; }
+            .dashboard { display: flex; flex-direction: column; align-items: center; }
+            .stats { display: flex; justify-content: space-around; flex-wrap: wrap; margin: 20px 0; }
+            .stat-card { background: #f5f5f5; border-radius: 8px; padding: 15px; margin: 10px; min-width: 200px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+            .stat-value { font-size: 24px; font-weight: bold; color: #2c3e50; }
+            .stat-label { font-size: 14px; color: #7f8c8d; }
+            .graph { margin: 20px 0; text-align: center; }
+            .solver-section { margin-bottom: 30px; padding: 15px; background: #f9f9f9; border-radius: 8px; }
+            table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            tr:nth-child(even) { background-color: #f9f9f9; }
+        </style>
+    </head>
+    <body>
+        <div class="dashboard">
+            <h1>Dashboard de Optimización de Rutas</h1>
+            
+            <div class="graph">
+                <img src="estadisticas.png" alt="Estadísticas de Optimización" width="800">
+            </div>
+            
+            <h2>Resumen de Resultados</h2>
+            <table>
+                <tr>
+                    <th>Método</th>
+                    <th>Densidad Máxima</th>
+                    <th>Densidad Media</th>
+                    <th>Aristas Transitadas</th>
+                    <th>Cobertura (%)</th>
+                </tr>
+    
+                <tr>
+                    <td>Original</td>
+                    <td>126.00</td>
+                    <td>2.41</td>
+                    <td>42190</td>
+                    <td>28.4%</td>
+                </tr>
+        
+                <tr>
+                    <td>vns_solver</td>
+                    <td>23.00</td>
+                    <td>1.10</td>
+                    <td>55071</td>
+                    <td>37.0%</td>
+                </tr>
+        
+                <tr>
+                    <td>sa_solver</td>
+                    <td>38.00</td>
+                    <td>1.54</td>
+                    <td>56078</td>
+                    <td>37.7%</td>
+                </tr>
+        
+                <tr>
+                    <td>ts_solver</td>
+                    <td>24.00</td>
+                    <td>1.04</td>
+                    <td>54343</td>
+                    <td>36.5%</td>
+                </tr>
+        
+            </table>
+            
+            <h2>Enlaces a Mapas</h2>
+            <ul>
+    <li><a href="mapa_calor_original.html" target="_blank">Mapa de Calor - Rutas Originales</a></li>
+<li><a href="mapa_calor_vns_solver.html" target="_blank">Mapa de Calor - vns_solver</a></li>
+<li><a href="mapa_calor_sa_solver.html" target="_blank">Mapa de Calor - sa_solver</a></li>
+<li><a href="mapa_calor_ts_solver.html" target="_blank">Mapa de Calor - ts_solver</a></li>
+<li><a href="mapa_comparativo.html" target="_blank">Mapa Comparativo</a></li>
+
+            </ul>
+        </div>
+    </body>
+    </html>
+    

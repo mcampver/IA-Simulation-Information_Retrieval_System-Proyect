@@ -350,7 +350,7 @@ const OptimizationForm = ({
                 setCapacities(Array(num).fill(100));
               }}
               min="1"
-              max="10"
+              max="999999999"
               style={inputStyles}
             />
             
