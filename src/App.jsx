@@ -41,7 +41,7 @@ function App() {
     num_trucks: 0,
     truck_capacities: [],
     target_demands: {}
-  });  const [selectedRouteId, setSelectedRouteId] = useState(null);
+  }); const [selectedRouteId, setSelectedRouteId] = useState(null);
   const [showDetailedStats, setShowDetailedStats] = useState(false);
   const [weatherInfo, setWeatherInfo] = useState(null); // Nueva estado para información climática
   const [showWeatherPanel, setShowWeatherPanel] = useState(true); // Control de visibilidad del panel
@@ -62,18 +62,18 @@ function App() {
   const handleMapClick = (info) => {
     // Solo procesamos clics que efectivamente hayan seleccionado un nodo
     if (!info.object) return;
-    
+
     // Extraemos el nodo seleccionado (necesitamos el ID y la posición)
     const nodeId = info.object.id;
     const position = [info.object.lon, info.object.lat];
-    
+
     if (!nodeId) return;
-    
+
     const selectedNode = {
       id: nodeId,
       position: position
     };
-    
+
     if (selectionMode === "depot") {
       // Si estamos seleccionando el depósito, reemplazamos el actual
       setSelectedDepot(selectedNode);
@@ -85,7 +85,7 @@ function App() {
       if (selectedDepot && selectedNode.id === selectedDepot.id) {
         return; // No permitimos seleccionar el depósito como objetivo
       }
-      
+
       const alreadySelected = selectedTargets.some(target => target.id === selectedNode.id);
       if (!alreadySelected) {
         setSelectedTargets([...selectedTargets, selectedNode]);
@@ -120,7 +120,7 @@ function App() {
           console.log("Conexión WebSocket establecida");
           setConnectionStatus("Conectado");
           setErrorMessage("");
-          
+
           // Solicitar los nodos del mapa
           ws.send(JSON.stringify({
             type: 'request_map_nodes'
@@ -130,11 +130,11 @@ function App() {
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            
+
             // Si es una actualización de posiciones
             if (data.vehicles) {
               console.log(`Recibidos datos para ${data.vehicles.length} vehículos`);
-              
+
               const updated = {};
               data.vehicles.forEach((v) => {
                 const prevTrail = trailsRef.current[v.id] || [];
@@ -150,36 +150,37 @@ function App() {
               });
 
               setVehicleData(updated);
-              setTrafficLights(data.traffic_lights || []);            }
-              // Si es un error de optimización
+              setTrafficLights(data.traffic_lights || []);
+            }
+            // Si es un error de optimización
             if (data.type === 'optimization_error') {
               console.error("Error de optimización:", data.message);
               setErrorMessage(`Error: ${data.message}`);
               setConnectionStatus("Error en optimización");
             }
-            
+
             // Si es un mensaje de progreso de optimización
             if (data.type === 'optimization_progress') {
               console.log("Progreso de optimización:", data.message);
               setConnectionStatus(`Optimizando: ${data.message}`);
-              
+
               // NUEVO: Detectar advertencias sobre nodos excluidos
               if (data.message.includes('excluyeron') || data.message.includes('no alcanzables')) {
                 setOptimizationWarnings(prev => [...prev, data.message]);
               }
             }
-              
+
             // Si es una respuesta de optimización
             if (data.type === 'optimization_result') {
               console.log("Recibidos resultados de optimización:", data);
               setConnectionStatus("Conectado");  // Resetear estado de conexión
-              
+
               // Guardar información climática si está disponible
               if (data.weather_info) {
                 setWeatherInfo(data.weather_info);
                 console.log("Información climática:", data.weather_info);
               }
-              
+
               // Transformar las rutas al formato esperado por PathLayer
               // y calcular la distancia una sola vez
               const routes = data.routes.map((route, idx) => {
@@ -192,15 +193,15 @@ function App() {
                   vehicleId: `Camión ${idx + 1}`
                 };
               });
-              
+
               setOptimizedRoutes(routes);
             }
-            
+
             // Si hay un error de optimización
             if (data.type === 'optimization_error') {
               setErrorMessage(data.message);
             }
-            
+
             // Si es una respuesta con los nodos del mapa
             if (data.type === 'map_nodes') {
               setMapNodes(data.nodes.map(node => ({
@@ -210,7 +211,7 @@ function App() {
                 lat: node.lat
               })));
             }
-            
+
           } catch (err) {
             console.error("Error procesando mensaje:", err);
             setErrorMessage(`Error procesando datos: ${err.message}`);
@@ -255,13 +256,13 @@ function App() {
       setOptimizationWarnings([]); // Limpiar advertencias
       return;
     }
-    
+
     setOptimizationWarnings([]); // Limpiar advertencias anteriores
-    
+
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       // Limpiar rutas antiguas antes de solicitar nuevas
       setOptimizedRoutes([]);
-      
+
       // Incluir el solver en la petición
       wsRef.current.send(JSON.stringify({
         type: 'optimization_request',
@@ -271,7 +272,7 @@ function App() {
       setErrorMessage("No hay conexión con el servidor");
     }
   };
-  
+
 
   // Función para manejar la selección de rutas
   const handleRouteSelect = (routeId) => {
@@ -314,13 +315,13 @@ function App() {
       onRouteClick: handleRouteClick,
       onRouteHover: handleRouteHover
     }),
-    
+
     // Capa para nodos seleccionados
     new ScatterplotLayer({
       id: 'selected-nodes',
       data: [
-        ...(selectedDepot ? [{...selectedDepot, type: 'depot'}] : []),
-        ...selectedTargets.map(target => ({...target, type: 'target'}))
+        ...(selectedDepot ? [{ ...selectedDepot, type: 'depot' }] : []),
+        ...selectedTargets.map(target => ({ ...target, type: 'target' }))
       ],
       pickable: true,
       stroked: true,
@@ -374,12 +375,12 @@ function App() {
       onClick: handleMapClick
     }),
   ];
-  
+
   // Agregamos un panel para mostrar la información de las rutas
   return (
     <>
       {/* Panel de estado con todas las funciones */}
-      <StatusPanel 
+      <StatusPanel
         connectionStatus={connectionStatus}
         errorMessage={errorMessage}
         vehicleCount={Object.keys(vehicleData).length}
@@ -397,10 +398,16 @@ function App() {
         setShowRAGPanel={setShowRAGPanel}
         optimizationWarnings={optimizationWarnings} // NUEVO
       />
-      
+      {/* Mensaje especial cuando recibimos 403 */}
+      {errorMessage.includes('status: 403') && (
+        <div className="vpn-warning">
+          💡 Recuerda que vives en Cuba, usa camuflaje.
+        </div>
+      )}
+
       {/* Formulario de optimización */}
-      {showOptimizationForm && 
-        <OptimizationForm 
+      {showOptimizationForm &&
+        <OptimizationForm
           onSubmit={requestOptimization}
           setOptimizedRoutes={setOptimizedRoutes}
           selectionMode={selectionMode}
@@ -410,7 +417,7 @@ function App() {
           onClearSelection={handleClearSelection}
         />
       }
-      
+
       {/* REMOVER: Panel de estadísticas de rutas - ahora solo en modal */}
       {/* {optimizedRoutes.length > 0 && (
         <RouteStats 
@@ -419,7 +426,7 @@ function App() {
           selectedRouteId={selectedRouteId}
         />
       )} */}
-      
+
       {/* Weather Modal */}
       <WeatherInfoPanel
         weatherInfo={weatherInfo}
@@ -428,32 +435,32 @@ function App() {
       />
 
       {/* Overlay climático compacto */}
-      <WeatherOverlay 
+      <WeatherOverlay
         weatherInfo={weatherInfo}
         position="topRightOverlay"
       />
-      
+
       {/* Efectos visuales de clima */}
-      <RouteWeatherEffects 
+      <RouteWeatherEffects
         routes={optimizedRoutes}
         weatherInfo={weatherInfo}
       />
-      
+
       {/* Modal de estadísticas */}
-      <StatsModal 
+      <StatsModal
         showDetailedStats={showDetailedStats}
         setShowDetailedStats={setShowDetailedStats}
         optimizedRoutes={optimizedRoutes}
         selectedRouteId={selectedRouteId}
         onSelectRoute={handleRouteSelect}
       />
-      
+
       {/* Tooltip de ruta */}
-      <RouteTooltip 
+      <RouteTooltip
         hoveredRoute={hoveredRoute}
         position={tooltipPosition}
       />
-      
+
       {/* Mapa principal */}
       <DeckGL
         initialViewState={INITIAL_VIEW_STATE}
