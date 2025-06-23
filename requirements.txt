@@ -1,3 +1,18 @@
+# Requiere Microsoft Visual C++ 14.0 o superior
+websockets
+network
+ag_solver
+ts_solver
+vns_solver
+sa_solver
+pybind11
+setuptools
+wheel
+flask
+numpy
+pandas
+aiohttp
+bs4
 sentence-transformers>=4.1.0
 faiss-cpu>=1.11.0
 pydantic>=2.11.7
