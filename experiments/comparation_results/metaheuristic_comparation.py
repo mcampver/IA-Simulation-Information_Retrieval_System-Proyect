@@ -25,7 +25,6 @@ from tqdm import tqdm
 import math
 
 # Añadir rutas para los solvers
-sys.path.append("src/metaheuristic/ag_solver")
 sys.path.append("src/metaheuristic/vns_solver") 
 sys.path.append("src/metaheuristic/sa_solver") 
 sys.path.append("src/metaheuristic/ts_solver")
@@ -108,9 +107,19 @@ def load_havana_graph():
     all_nodes = []
     street_congestion = {}
     
-    # Cargar datos de OSM desde el archivo de caché
-    cache_file = os.path.join("cache", "479c34c9f9679cb8467293e0403a0250c7ef8556.json")
+      # Buscar el archivo de caché en varias ubicaciones posibles
+    cache_paths = [
+        os.path.join("cache", "479c34c9f9679cb8467293e0403a0250c7ef8556.json"),
+        os.path.join(str(BASE_DIR), "cache", "479c34c9f9679cb8467293e0403a0250c7ef8556.json"),
+        os.path.join(str(BASE_DIR.parent), "cache", "479c34c9f9679cb8467293e0403a0250c7ef8556.json")
+    ]
     
+    cache_file = None
+    for path in cache_paths:
+        if os.path.exists(path):
+            cache_file = path
+            break
+        
     # Velocidades estimadas basadas en tipo de calle (km/h)
     highway_speeds = {
         "motorway": 120,
@@ -130,7 +139,11 @@ def load_havana_graph():
     }
     
     
-    print(f"Intentando abrir archivo de caché: {cache_file}")
+    if not cache_file:
+        raise FileNotFoundError(f"No se pudo encontrar el archivo de caché en ninguna de las rutas: {cache_paths}")
+    
+    print(f"Usando archivo de caché: {cache_file}")
+    
     with open(cache_file, 'r', encoding='utf-8') as f:
         osm_data = json.load(f)
         
@@ -349,36 +362,9 @@ def create_algorithm_wrappers():
     """Crea los wrappers para todos los algoritmos"""
     
     # Importar algoritmos aquí para evitar problemas de pickle
-    import ag_solver
     import vns_solver
     import sa_solver
     import ts_solver
-
-    def ag_solver_wrapper(dm, d, tc, **kwargs):
-        """Wrapper para algoritmo genético"""
-        # Convertir tipos de datos
-        dm_list = dm.tolist()
-        d_list = [int(x) for x in d]
-        tc_list = [int(x) for x in tc]
-        
-        # Parámetros
-        pop_size = kwargs.get('pop_size', 50)
-        sel_size = kwargs.get('sel_size', 20)
-        max_gen = kwargs.get('max_gen', 100)
-        no_improve_limit = kwargs.get('no_improve_limit', 20)
-        mut_rate = kwargs.get('mut_rate', 0.3)
-        
-        # Llamar al solver
-        return ag_solver.solve_vrp(
-            dist_matrix=dm_list,
-            demand=d_list,
-            capacity=tc_list,
-            pop_size=pop_size,
-            sel_size=sel_size,
-            max_gen=max_gen,
-            no_improve_limit=no_improve_limit,
-            mut_rate=mut_rate
-        )
 
     def sa_wrapper(dm, d, tc, **kwargs):
         """Wrapper para SA con captura de salida"""
@@ -529,31 +515,26 @@ def create_algorithm_wrappers():
             max_iter = kwargs.get('max_iter', 100)
             time_limit = kwargs.get('time_limit', 30.0)
             
-            # Preparar argumentos con el tipo correcto
+            # Preparar los argumentos
             dist_matrix_list = dm.tolist() if hasattr(dm, 'tolist') else [[float(cell) for cell in row] for row in dm]
             demands_list = [int(x) for x in d]
             capacities_list = [int(x) for x in tc]
+            num_trucks = len(tc)
+            
+            # Crear lista de objetivos (índices del 1 al n-1)
+            objectives = list(range(1, len(d)))
             
             try:
-                # Crear una instancia de VNSConfig si está disponible
-                if hasattr(vns_solver, 'VNSConfig'):
-                    config = vns_solver.VNSConfig()
-                    result = vns_solver.vns_hetero_simplified(
-                        distance_matrix=dist_matrix_list,
-                        demands=demands_list,
-                        capacities=capacities_list,
-                        max_iterations=int(max_iter),
-                        time_limit=float(time_limit),
-                        config=config
-                    )
-                else:
-                    result = vns_solver.vns_hetero_simplified(
-                        distance_matrix=dist_matrix_list,
-                        demands=demands_list,
-                        capacities=capacities_list,
-                        max_iterations=int(max_iter),
-                        time_limit=float(time_limit)
-                    )
+                # Llamar a solve_vrp con los parámetros correctos
+                result = vns_solver.solve_vrp(
+                    dist_matrix_list,  # Primer argumento posicional
+                    objectives,        # Segundo argumento posicional
+                    demands_list,      # Tercer argumento posicional
+                    capacities_list,   # Cuarto argumento posicional
+                    num_trucks,        # Quinto argumento posicional
+                    max_iter=int(max_iter),
+                    time_limit=float(time_limit)
+                )
             except Exception as e:
                 logging.error(f"Error en VNS: {e}")
                 # Devolver una solución vacía en caso de error
@@ -579,40 +560,29 @@ def create_algorithm_wrappers():
             max_iter = kwargs.get('max_iter', 200)  # Más iteraciones
             time_limit = kwargs.get('time_limit', 30.0)  # Mayor tiempo límite
             
-            # Preparar argumentos con el tipo correcto
+            # Preparar argumentos
             dist_matrix_list = dm.tolist() if hasattr(dm, 'tolist') else [[float(cell) for cell in row] for row in dm]
             demands_list = [int(x) for x in d]
             capacities_list = [int(x) for x in tc]
+            num_trucks = len(tc)
+            
+            # Crear lista de objetivos (índices del 1 al n-1)
+            objectives = list(range(1, len(d)))
             
             try:
-                # Crear una instancia de VNSConfig si está disponible
-                if hasattr(vns_solver, 'VNSConfig'):
-                    config = vns_solver.VNSConfig()
-                    # Configurar para búsqueda más intensiva
-                    if hasattr(config, 'intensification_factor'):
-                        config.intensification_factor = 1.5  # Mayor intensificación
-                        
-                    result = vns_solver.vns_hetero_simplified(
-                        distance_matrix=dist_matrix_list,
-                        demands=demands_list,
-                        capacities=capacities_list,
-                        max_iterations=int(max_iter),
-                        time_limit=float(time_limit),
-                        config=config
-                    )
-                else:
-                    result = vns_solver.vns_hetero_simplified(
-                        distance_matrix=dist_matrix_list,
-                        demands=demands_list,
-                        capacities=capacities_list,
-                        max_iterations=int(max_iter),
-                        time_limit=float(time_limit)
-                    )
+                result = vns_solver.solve_vrp(
+                    dist_matrix_list,
+                    objectives,
+                    demands_list,
+                    capacities_list,
+                    num_trucks,
+                    max_iter=int(max_iter),
+                    time_limit=float(time_limit)
+                )
             except Exception as e:
                 logging.error(f"Error en VNS intensivo: {e}")
-                # Devolver una solución vacía en caso de error
                 result = []
-                
+                    
             for line in buffer_out.getvalue().splitlines():
                 if line.strip():
                     logging.info(f"[VNS-Intensive stdout] {line}")
@@ -627,9 +597,6 @@ def create_algorithm_wrappers():
     return [
         ('vns_basic', vns_wrapper, {'max_iter': 100, 'max_no_improve': 20}),
         ('vns_intensive', vns_intensive_wrapper, {'max_iter': 200, 'max_no_improve': 30}),
-        ('ag_small', ag_solver_wrapper, {'pop_size':50, 'max_gen':100, 'mut_rate':0.3}),
-        ('ag_large', ag_solver_wrapper, {'pop_size':200, 'max_gen':200, 'mut_rate':0.3}),
-        ('ag_mut_high', ag_solver_wrapper, {'pop_size':100, 'max_gen':150, 'mut_rate':0.5}),
         ('sa', sa_wrapper, {'max_iter':1000, 'init_temp':1000, 'alpha':0.995}),
         ('sa_fast', sa_fast_wrapper, {'max_iter':1000, 'init_temp':1000}),
         ('ts', ts_wrapper, {'max_iter':1000, 'tabu_tenure':50}),
@@ -1094,7 +1061,7 @@ def generate_visualizations(df: pd.DataFrame, algorithms: List[str], config: Dic
 # ------ PARTE 7: FUNCIÓN PRINCIPAL ------
 
 def run_comparison(config: Dict[str, Any] = None):
-    """Función principal que ejecuta todo el experimento"""
+    """Función principal que ejecuta todo el experimento, con énfasis en parámetros de solvers"""
     if config is None:
         config = CONFIG
     
@@ -1107,30 +1074,63 @@ def run_comparison(config: Dict[str, Any] = None):
     listener = setup_logging(log_file)
     
     try:
-        logging.info("Iniciando comparación de metaheurísticas")
+        logging.info("Iniciando comparación de metaheurísticas centrada en parámetros")
         logging.info("Las distancias se miden en kilómetros (km)")
         logging.info(f"Configuración: {config}")
         
-        # EXPERIMENTO 1: Comparación básica (existente)
-        logging.info("=== Experimento 1: Escalabilidad básica ===")
-        df_results = run_experiments(config)
+        # Lista completa de algoritmos (sin ag_solver)
+        algorithms = ['vns_basic', 'vns_intensive', 
+                     'sa', 'sa_fast', 'ts', 'ts_long']
+        
+        # PRIORIDAD: EXPERIMENTO DE SENSIBILIDAD DE PARÁMETROS
+        # Mover este experimento al principio para darle prioridad
+        if config['extended_experiments']['run_parameter_sensitivity']:
+            logging.info("=== EXPERIMENTO PRINCIPAL: Análisis de sensibilidad a parámetros ===")
+            # Crear un directorio específico para este análisis
+            param_dir = Path(config['results_dir']) / "parameter_analysis"
+            param_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Configuración con énfasis en el análisis de parámetros
+            param_config = config.copy()
+            param_config['results_dir'] = str(param_dir)
+            # Aumentar el número de repeticiones para mayor precisión
+            param_config['n_runs'] = max(config['n_runs'], 15)
+            
+            parameter_sensitivity_analysis(param_config)
+            logging.info("Análisis de sensibilidad completado y guardado en: " + str(param_dir))
+            
+            # Crear un resumen ejecutivo de los mejores parámetros encontrados
+            summary_path = param_dir / "best_parameters_summary.txt"
+            with open(summary_path, 'w') as f:
+                f.write("=== RESUMEN DE MEJORES PARÁMETROS ENCONTRADOS ===\n\n")
+                # Este código depende de qué información esté disponible después de parameter_sensitivity_analysis
+                f.write("El análisis detallado se encuentra en los archivos CSV y gráficos generados.\n")
+            logging.info(f"Resumen de mejores parámetros guardado en {summary_path}")
+        
+        # EXPERIMENTO SECUNDARIO: Comparación básica (reducida)
+        logging.info("=== Experimento Secundario: Escalabilidad básica ===")
+        # Reducir tamaños de instancia para centrarse en los parámetros
+        basic_config = config.copy()
+        basic_config['client_counts'] = config['client_counts'][:4]  # Usar menos tamaños de instancia
+        
+        df_results = run_experiments(basic_config)
         
         # Guardar resultados básicos
         results_path = Path(config['results_dir']) / "vrp_scalability_results.csv"
         df_results.to_csv(results_path, index=False)
         logging.info(f"Resultados básicos guardados en {results_path}")
         
-        # Lista completa de algoritmos
-        algorithms = ['vns_basic', 'vns_intensive', 'ag_small', 'ag_large', 
-                     'ag_mut_high', 'sa', 'sa_fast', 'ts', 'ts_long']
-        
         # Visualizaciones del experimento básico
         generate_visualizations(df_results, algorithms, config)
         
-        # EXPERIMENTO 2: Flotas heterogéneas (si está habilitado)
+        # Ejecutar otros experimentos solo si están explícitamente habilitados
+        # EXPERIMENTO OPCIONALES: Flotas heterogéneas (si está habilitado)
         if config['extended_experiments']['run_hetero_fleet']:
-            logging.info("=== Experimento 2: Flotas heterogéneas ===")
-            df_hetero = run_experiments_with_hetero_fleet(config)
+            logging.info("=== Experimento opcional: Flotas heterogéneas ===")
+            hetero_config = config.copy()
+            hetero_config['client_counts'] = config['client_counts'][:3]  # Versión más reducida
+            
+            df_hetero = run_experiments_with_hetero_fleet(hetero_config)
             hetero_results_path = Path(config['results_dir']) / "vrp_heterogeneous_results.csv"
             df_hetero.to_csv(hetero_results_path, index=False)
             logging.info(f"Resultados de flota heterogénea guardados en {hetero_results_path}")
@@ -1141,40 +1141,42 @@ def run_comparison(config: Dict[str, Any] = None):
             generate_visualizations(df_hetero, algorithms, 
                                    {**config, 'results_dir': str(hetero_viz_dir)})
         
-        # EXPERIMENTO 3: Diferentes patrones de demanda (si está habilitado)
+        # EXPERIMENTO OPCIONALES: Patrones de demanda (si está habilitado)
         if config['extended_experiments']['run_demand_patterns']:
-            logging.info("=== Experimento 3: Patrones de demanda ===")
-            for pattern in config['extended_experiments']['demand_patterns']:
+            logging.info("=== Experimento opcional: Patrones de demanda ===")
+            # Limitar a un solo patrón para simplificar si hay múltiples
+            patterns = config['extended_experiments']['demand_patterns']
+            if len(patterns) > 1:
+                patterns = [patterns[0]]  # Usar solo el primer patrón
+                
+            for pattern in patterns:
                 logging.info(f"Ejecutando experimentos con patrón: {pattern}")
-                df_demand = run_experiments_with_demand_pattern(config, pattern)
+                # Configuración más reducida
+                pattern_config = config.copy()
+                pattern_config['client_counts'] = config['client_counts'][:3]
+                
+                df_demand = run_experiments_with_demand_pattern(pattern_config, pattern)
                 demand_results_path = Path(config['results_dir']) / f"vrp_{pattern}_demand_results.csv"
                 df_demand.to_csv(demand_results_path, index=False)
                 logging.info(f"Resultados del patrón {pattern} guardados en {demand_results_path}")
                 
-                # Visualizaciones para este patrón
+                # Visualizaciones más básicas para este patrón
                 pattern_viz_dir = Path(config['results_dir']) / "visualizations" / f"demand_{pattern}"
                 pattern_viz_dir.mkdir(parents=True, exist_ok=True)
                 generate_visualizations(df_demand, algorithms, 
                                       {**config, 'results_dir': str(pattern_viz_dir)})
         
-        # EXPERIMENTO 4: Análisis de sensibilidad a parámetros (si está habilitado)
-        if config['extended_experiments']['run_parameter_sensitivity']:
-            logging.info("=== Experimento 4: Análisis de sensibilidad a parámetros ===")
-            parameter_sensitivity_analysis(config)
-            logging.info("Análisis de sensibilidad completado")
+        # Pruebas estadísticas enfocadas en las configuraciones de parámetros
+        logging.info("Realizando pruebas estadísticas para comparar rendimiento")
         
-        # Realizar pruebas estadísticas más extensas
-        logging.info("Realizando pruebas estadísticas")
-        
-        # Más pares para comparar todas las variantes
+        # Pares más relevantes para el análisis (reducido para enfocarse en parámetros)
         pairs = [
-            # Comparaciones entre grupos
-            ('vns_basic', 'ag_large'), ('vns_basic', 'sa'), ('vns_basic', 'ts'),
-            ('ag_large', 'sa'), ('ag_large', 'ts'), ('sa', 'ts'),
+            # Comparaciones entre grupos principales
+            ('vns_intensive', 'sa'), ('vns_intensive', 'ts'),
+            ('sa', 'ts'),
             
-            # Comparaciones intragrupo
+            # Comparaciones intragrupo (más importantes para análisis de parámetros)
             ('vns_basic', 'vns_intensive'),
-            ('ag_small', 'ag_large'), ('ag_small', 'ag_mut_high'), ('ag_large', 'ag_mut_high'),
             ('sa', 'sa_fast'),
             ('ts', 'ts_long')
         ]
@@ -1204,8 +1206,7 @@ def run_comparison(config: Dict[str, Any] = None):
                             result_type = "test_realizado"
                         except Exception as e:
                             if "zero_method" in str(e):
-                                # Este caso no debería ocurrir con la verificación anterior,
-                                # pero lo dejamos por seguridad
+                                # Este caso no debería ocurrir con la verificación anterior
                                 stat, p = 0.0, 1.0
                                 result_type = "resultados_identicos"
                                 logging.info(f"Algoritmos {a1} y {a2} producen resultados idénticos para {nc} clientes")
@@ -1231,7 +1232,7 @@ def run_comparison(config: Dict[str, Any] = None):
         # Resumen de mejores algoritmos por tamaño de instancia
         create_performance_summary(df_results, algorithms, config)
         
-        logging.info("Experimentos completados con éxito")
+        logging.info("Experimentos completados con éxito - Enfoque en parámetros de solvers")
         
     except Exception as exc:
         logging.exception(f"Error durante la ejecución: {exc}")
@@ -1344,12 +1345,17 @@ def analyze_convergence(config: Dict[str, Any]) -> None:
     plt.close()
 
 def parameter_sensitivity_analysis(config: Dict[str, Any]) -> None:
-    """Analiza la sensibilidad de los algoritmos a cambios en sus parámetros"""
-    # Configurar cliente fijo y capacidad
-    num_clients = 10
+    """
+    Analiza en profundidad la sensibilidad de los algoritmos a cambios en sus parámetros
+    para encontrar configuraciones óptimas para cada solver
+    """
+    # Configuración para experimentos de parámetros
+    num_clients = 20  # Instancia más grande para mejor evaluación
     truck_capacity = config['truck_capacity']
     seed = config['seed_base']
-    n_runs = 5  # Reducir runs para este experimento específico
+    n_runs = 10  # Más repeticiones para mayor robustez estadística
+    
+    print(f"Iniciando análisis exhaustivo de parámetros con {num_clients} clientes y {n_runs} repeticiones")
     
     # Cargar datos
     G = load_havana_graph()
@@ -1362,21 +1368,22 @@ def parameter_sensitivity_analysis(config: Dict[str, Any]) -> None:
     num_trucks = max(1, int(np.ceil(total_demand / truck_capacity)))
     truck_caps = [truck_capacity] * num_trucks
     
-    # Parámetros a variar para cada algoritmo
+    # Parámetros a evaluar para cada algoritmo (ampliados)
     parameter_ranges = {
-        'ag_solver_wrapper': {
-            'mut_rate': [0.1, 0.3, 0.5, 0.7, 0.9],
-            'pop_size': [20, 50, 100, 200, 300]
-        },
         'sa_wrapper': {
             'init_temp': [100, 500, 1000, 2000, 5000],
-            'alpha': [0.8, 0.9, 0.95, 0.98, 0.995]
+            'alpha': [0.8, 0.9, 0.95, 0.98, 0.995],
+            'iterPerTemp': [50, 100, 150, 200]
         },
         'ts_wrapper': {
-            'tabu_tenure': [10, 25, 50, 100, 200]
+            'tabu_tenure': [10, 25, 50, 100, 200],
+            'no_improve_limit': [100, 200, 300, 400],
+            'diversification_interval': [200, 300, 500, 700]
         },
         'vns_wrapper': {
-            'max_iter': [50, 100, 200, 500, 1000]
+            'max_iter': [50, 100, 200, 500, 1000],
+            'time_limit': [10, 20, 30, 60],
+            'max_no_improve': [10, 20, 30, 50]
         }
     }
     
@@ -1386,9 +1393,7 @@ def parameter_sensitivity_analysis(config: Dict[str, Any]) -> None:
     # Crear un mapeo de nombres de algoritmos a funciones
     algorithm_funcs = {}
     for name, func, _ in algorithms:
-        if name.startswith('ag_'):
-            algorithm_funcs['ag_solver_wrapper'] = func
-        elif name.startswith('sa'):
+        if name.startswith('sa'):
             algorithm_funcs['sa_wrapper'] = func
         elif name.startswith('ts'):
             algorithm_funcs['ts_wrapper'] = func
@@ -1398,57 +1403,215 @@ def parameter_sensitivity_analysis(config: Dict[str, Any]) -> None:
     # Resultados para cada algoritmo y parámetro
     sensitivity_results = {}
     
-    # Para cada algoritmo
+    # Para cada algoritmo y cada parámetro, realizar evaluación sistemática
     for alg_name, param_dict in parameter_ranges.items():
         alg_func = algorithm_funcs.get(alg_name)
         if not alg_func:
             continue
-            
-        # Para cada parámetro
+        
+        print(f"Evaluando parámetros para {alg_name}...")
+        
+        # Configurar valores base para el algoritmo
+        base_params = {
+            'sa_wrapper': {'init_temp': 1000, 'alpha': 0.95, 'iterPerTemp': 100},
+            'ts_wrapper': {'tabu_tenure': 50, 'no_improve_limit': 200, 'diversification_interval': 500},
+            'vns_wrapper': {'max_iter': 200, 'time_limit': 30, 'max_no_improve': 20}
+        }.get(alg_name, {})
+        
+        # Para cada parámetro del algoritmo
         for param_name, param_values in param_dict.items():
             results = []
             
             # Para cada valor del parámetro
-            for param_value in param_values:
-                params = {param_name: param_value}
+            for param_value in tqdm(param_values, desc=f"{alg_name} - {param_name}"):
+                # Copiar parámetros base y modificar el parámetro actual
+                params = base_params.copy()
+                params[param_name] = param_value
                 
                 # Ejecutar n_runs veces
                 costs = []
+                times = []
                 for _ in range(n_runs):
                     try:
+                        t0 = time.time()
                         routes = alg_func(dist_matrix, demands, truck_caps, **params)
+                        t1 = time.time()
                         cost = compute_total_distance(routes, dist_matrix)
                         costs.append(cost)
+                        times.append(t1 - t0)
                     except Exception as e:
                         logging.error(f"Error en {alg_name} con {param_name}={param_value}: {e}")
                 
-                # Calcular promedio
-                avg_cost = np.mean(costs) if costs else float('inf')
-                results.append((param_value, avg_cost))
+                # Calcular estadísticas
+                if costs:
+                    avg_cost = np.mean(costs)
+                    std_cost = np.std(costs)
+                    avg_time = np.mean(times)
+                    ci = bootstrap_ci(costs)
+                    cv = std_cost / avg_cost if avg_cost > 0 else float('inf')
+                else:
+                    avg_cost = float('inf')
+                    std_cost = float('inf')
+                    avg_time = float('nan')
+                    ci = (float('inf'), float('inf'))
+                    cv = float('inf')
+                
+                results.append({
+                    'param_value': param_value,
+                    'avg_cost': avg_cost,
+                    'std_cost': std_cost,
+                    'ci_lower': ci[0],
+                    'ci_upper': ci[1],
+                    'avg_time': avg_time,
+                    'cv': cv
+                })
             
             # Guardar resultados
             sensitivity_results[f"{alg_name}_{param_name}"] = results
     
-    # Visualizar resultados
+    # Crear directorio para visualizaciones
+    viz_dir = Path(config['results_dir']) / "visualizations" / "parameter_sensitivity"
+    viz_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Guardar resultados en CSV para análisis posterior
+    results_df = pd.DataFrame()
+    for param_key, result_list in sensitivity_results.items():
+        df = pd.DataFrame(result_list)
+        df['parameter'] = param_key
+        results_df = pd.concat([results_df, df], ignore_index=True)
+    
+    results_df.to_csv(viz_dir / "parameter_sensitivity_results.csv", index=False)
+    
+    # Visualizar resultados con gráficos mejorados
     for param_key, results in sensitivity_results.items():
         alg_name, param_name = param_key.split('_', 1)
         
+        # Convertir resultados a DataFrame para facilitar el trabajo
+        df = pd.DataFrame(results)
+        
+        # Gráfico principal: costo vs. valor del parámetro
         plt.figure(figsize=config['viz']['figsize'])
-        x_values, y_values = zip(*results)
-        plt.plot(x_values, y_values, marker='o')
+        plt.errorbar(
+            df['param_value'], df['avg_cost'],
+            yerr=[(df['avg_cost'] - df['ci_lower']), (df['ci_upper'] - df['avg_cost'])],
+            fmt='o-', capsize=5
+        )
         
         plt.xlabel(f'Valor de {param_name}')
         plt.ylabel('Costo promedio')
         plt.title(f'Sensibilidad de {alg_name} a {param_name}')
         plt.grid(True, alpha=0.3)
         
-        # Guardar visualización
-        viz_dir = Path(config['results_dir']) / "visualizations" / "sensitivity"
-        viz_dir.mkdir(parents=True, exist_ok=True)
-        plt.savefig(viz_dir / f"sensitivity_{alg_name}_{param_name}.png")
+        # Marcar el mejor valor del parámetro
+        best_idx = df['avg_cost'].idxmin()
+        best_value = df.loc[best_idx, 'param_value']
+        best_cost = df.loc[best_idx, 'avg_cost']
+        plt.scatter([best_value], [best_cost], color='red', s=100, zorder=5)
+        plt.annotate(f'Mejor: {best_value}',
+                    (best_value, best_cost),
+                    xytext=(10, -20),
+                    textcoords='offset points',
+                    arrowprops=dict(arrowstyle='->', color='red'))
+        
+        plt.tight_layout()
+        plt.savefig(viz_dir / f"cost_vs_{alg_name}_{param_name}.png")
         plt.close()
+        
+        # Gráfico secundario: tiempo vs. valor del parámetro
+        plt.figure(figsize=config['viz']['figsize'])
+        plt.plot(df['param_value'], df['avg_time'], 'o-')
+        plt.xlabel(f'Valor de {param_name}')
+        plt.ylabel('Tiempo promedio (s)')
+        plt.title(f'Tiempo de ejecución de {alg_name} según {param_name}')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(viz_dir / f"time_vs_{alg_name}_{param_name}.png")
+        plt.close()
+        
+        # Gráfico de robustez: coeficiente de variación vs. valor del parámetro
+        plt.figure(figsize=config['viz']['figsize'])
+        plt.plot(df['param_value'], df['cv'] * 100, 'o-')  # Multiplicar por 100 para mostrar como porcentaje
+        plt.xlabel(f'Valor de {param_name}')
+        plt.ylabel('Coeficiente de variación (%)')
+        plt.title(f'Robustez de {alg_name} según {param_name}')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(viz_dir / f"robustness_vs_{alg_name}_{param_name}.png")
+        plt.close()
+    
+    # Generar gráfico comparativo de mejores configuraciones
+    generate_best_params_comparison(sensitivity_results, viz_dir, config)
 
-# Ejecutar si se llama como script principal
+def generate_best_params_comparison(sensitivity_results, viz_dir, config):
+    """Genera un gráfico comparativo de las mejores configuraciones de cada algoritmo"""
+    best_configs = {}
+    
+    # Encontrar la mejor configuración para cada algoritmo
+    for param_key, results in sensitivity_results.items():
+        alg_name = param_key.split('_')[0]
+        param_name = param_key[len(alg_name)+1:]
+        
+        if alg_name not in best_configs:
+            best_configs[alg_name] = {'params': {}, 'cost': float('inf')}
+        
+        # Encontrar el mejor valor para este parámetro
+        best_value = None
+        best_cost = float('inf')
+        
+        for result in results:
+            if result['avg_cost'] < best_cost:
+                best_cost = result['avg_cost']
+                best_value = result['param_value']
+        
+        # Actualizar la mejor configuración si se encontró un valor mejor
+        if best_value is not None:
+            best_configs[alg_name]['params'][param_name] = best_value
+            if best_cost < best_configs[alg_name]['cost']:
+                best_configs[alg_name]['cost'] = best_cost
+    
+    # Crear un DataFrame con los resultados
+    data = []
+    for alg_name, config_data in best_configs.items():
+        params_str = ', '.join([f"{k}={v}" for k, v in config_data['params'].items()])
+        data.append({
+            'Algoritmo': alg_name,
+            'Mejor costo': config_data['cost'],
+            'Parámetros': params_str
+        })
+    
+    best_df = pd.DataFrame(data)
+    best_df.to_csv(viz_dir / "best_configurations.csv", index=False)
+    
+    # Crear gráfico de barras comparativo
+    plt.figure(figsize=config['viz']['figsize'])
+    bars = plt.bar(best_df['Algoritmo'], best_df['Mejor costo'])
+    
+    # Añadir etiquetas con los valores
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                f'{height:.2f}', ha='center', va='bottom')
+    
+    plt.xlabel('Algoritmo')
+    plt.ylabel('Mejor costo promedio')
+    plt.title('Comparación de los mejores resultados por algoritmo')
+    plt.grid(True, alpha=0.3, axis='y')
+    plt.tight_layout()
+    plt.savefig(viz_dir / "best_configurations_comparison.png")
+    plt.close()
+    
+    # Guardar un informe de texto con las mejores configuraciones
+    with open(viz_dir / "best_configurations_report.txt", 'w') as f:
+        f.write("INFORME DE MEJORES CONFIGURACIONES DE PARÁMETROS\n")
+        f.write("==============================================\n\n")
+        for alg_name, config_data in best_configs.items():
+            f.write(f"Algoritmo: {alg_name}\n")
+            f.write(f"Mejor costo: {config_data['cost']:.2f}\n")
+            f.write("Parámetros óptimos:\n")
+            for param, value in config_data['params'].items():
+                f.write(f"  - {param}: {value}\n")
+            f.write("\n")
+
 if __name__ == '__main__':
     import argparse
     
@@ -1469,11 +1632,27 @@ if __name__ == '__main__':
     # Configurar qué experimentos ejecutar
     config_copy = CONFIG.copy()
     config_copy['extended_experiments'] = {
-        'run_hetero_fleet': args.all or args.hetero,
-        'run_demand_patterns': args.all or args.demand,
+        'run_hetero_fleet': False,
+        'run_demand_patterns': False,
         'run_parameter_sensitivity': args.all or args.sensitivity,
-        'demand_patterns': ['uniform', 'clustered', 'heavy_tailed']
+        'demand_patterns': ['uniform']
     }
+    
+    # Crear carpeta específica para resultados sin ag_solver
+    no_ag_dir = Path("experiments/comparation_results/solver_parametros")
+    no_ag_dir.mkdir(parents=True, exist_ok=True)
+    config_copy['results_dir'] = no_ag_dir
+    
+    # Corregir la ruta del archivo de caché
+    # La ruta debe ser absoluta y apuntar al archivo correcto
+    cache_file = Path("cache/479c34c9f9679cb8467293e0403a0250c7ef8556.json")
+    if not cache_file.exists():
+        # Si no existe en la ruta relativa, buscar en la ruta absoluta del proyecto
+        project_cache = BASE_DIR / "cache" / "479c34c9f9679cb8467293e0403a0250c7ef8556.json"
+        if project_cache.exists():
+            config_copy['graph_file'] = str(project_cache)
+        else:
+            print(f"ADVERTENCIA: No se encontró el archivo de caché. Por favor, asegúrate de que existe en {cache_file} o {project_cache}")
     
     # Ejecutar comparación con la configuración actualizada
     run_comparison(config_copy)

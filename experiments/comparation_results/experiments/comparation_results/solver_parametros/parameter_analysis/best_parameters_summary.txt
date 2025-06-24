@@ -1,0 +1,3 @@
+=== RESUMEN DE MEJORES PARÁMETROS ENCONTRADOS ===
+
+El análisis detallado se encuentra en los archivos CSV y gráficos generados.

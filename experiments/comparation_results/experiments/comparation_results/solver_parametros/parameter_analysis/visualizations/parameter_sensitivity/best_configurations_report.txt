@@ -1,0 +1,24 @@
+INFORME DE MEJORES CONFIGURACIONES DE PARÁMETROS
+==============================================
+
+Algoritmo: sa
+Mejor costo: 153.66
+Parámetros óptimos:
+  - wrapper_init_temp: 1000
+  - wrapper_alpha: 0.8
+  - wrapper_iterPerTemp: 50
+
+Algoritmo: ts
+Mejor costo: 41.73
+Parámetros óptimos:
+  - wrapper_tabu_tenure: 10
+  - wrapper_no_improve_limit: 100
+  - wrapper_diversification_interval: 200
+
+Algoritmo: vns
+Mejor costo: 164.48
+Parámetros óptimos:
+  - wrapper_max_iter: 1000
+  - wrapper_time_limit: 10
+  - wrapper_max_no_improve: 10
+

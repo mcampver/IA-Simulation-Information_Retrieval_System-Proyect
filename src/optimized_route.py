@@ -186,10 +186,10 @@ def optimize_delivery_routes(street_graph, start_point, target_points, num_truck
                 capacity=truck_capacities,  # Capacidades de cada vehículo
                 demand=demands,  # Demandas de cada nodo
                 distMat=dist_matrix,  # Matriz de distancias
-                T0=100.0,  # Temperatura inicial
+                T0=1000.0,  # Temperatura inicial
                 Tf=0.1,  # Temperatura final
-                alpha=0.98,  # Factor de enfriamiento
-                iterPerTemp=100,  # Iteraciones por nivel de temperatura
+                alpha=0.8,  # Factor de enfriamiento
+                iterPerTemp=50,  # Iteraciones por nivel de temperatura
                 lambdaPen=1000.0,  # Penalización por usar más vehículos
                 maxSeconds=30.0,  # Tiempo máximo de ejecución en segundos
                 seed=42  # Semilla aleatoria para reproducibilidad
@@ -203,10 +203,10 @@ def optimize_delivery_routes(street_graph, start_point, target_points, num_truck
                 demands,
                 truck_capacities,
                 num_trucks,
-                max_iter=300,        # Reducido de 1000
-                base_tabu_tenure=50,  # Reducido de 100
-                no_improve_limit=100, # Reducido de 200
-                diversification_interval=150  # Reducido de 500
+                max_iter=300,        
+                base_tabu_tenure=10,  
+                no_improve_limit=100, 
+                diversification_interval=200 
             )
             
         elif solver == 'vns_solver':
@@ -217,8 +217,8 @@ def optimize_delivery_routes(street_graph, start_point, target_points, num_truck
                 demands,
                 truck_capacities,
                 num_trucks,
-                max_iter=300,
-                time_limit=30.0
+                max_iter=1000,
+                time_limit=10.0
             )
             
         else:

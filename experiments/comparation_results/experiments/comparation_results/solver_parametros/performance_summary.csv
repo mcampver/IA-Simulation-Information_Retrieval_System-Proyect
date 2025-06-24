@@ -1,0 +1,5 @@
+num_clients,best_cost_algorithm,best_cost_value,fastest_algorithm,fastest_time,most_robust_algorithm,robustness_cv,best_utilization_algorithm,utilization_pct
+5,ts,41.726858974033526,vns_basic,0.000501704216003418,ts,0.0,vns_basic,8.0
+6,ts,22.213419063694708,vns_basic,0.000897669792175293,sa,0.0,ts,28.000000000000007
+7,ts,5.783661905180233,vns_basic,0.0005456447601318359,sa,0.0,vns_basic,11.0
+8,ts,42.291702123551474,vns_basic,0.0007997512817382813,ts,0.0,ts,36.0

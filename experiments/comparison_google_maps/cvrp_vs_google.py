@@ -47,7 +47,7 @@ CONFIG = {
     'seed_base': 42,
     'results_dir': PROJECT_ROOT / "experiments" / "comparison_google_maps" / "results",
     'graph_file': "479c34c9f9679cb8467293e0403a0250c7ef8556.json",  # Tu grafo de La Habana
-    'google_api_key': "TU_API_KEY_AQUI",  # ¡Necesitas una API key válida!
+    'google_api_key': "TU_API_KEY_AQUI",  
     'scenarios': [
         {'name': 'urbano_denso', 'area': 'centro', 'traffic': 'heavy'},
         {'name': 'urbano_normal', 'area': 'centro', 'traffic': 'normal'},
