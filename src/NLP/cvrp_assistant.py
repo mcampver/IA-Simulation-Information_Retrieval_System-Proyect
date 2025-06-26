@@ -15,7 +15,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from src.NLP.Gemini import Gemini
 
 class CVRPAssistant:
-    """Asistente conversacional para extraer parámetros de CVRP (demandas, camiones y capacidades)"""
+    """Conversational assistant for extracting CVRP parameters (demands, trucks, and capacities)"""
     
     def __init__(self):
         self.gemini = Gemini()
@@ -33,16 +33,16 @@ class CVRPAssistant:
     
     def analyze_requirements(self, depot_info: dict, targets_info: list, user_description: str, solver: str = 'vns_solver') -> dict:
         """
-        Analiza los requerimientos del usuario y extrae parámetros para CVRP
-        
+            Analyzes the user's requirements and extracts parameters for CVRP
+
         Args:
-            depot_info: Información del depósito seleccionado {id: int, position: [lon, lat]}
-            targets_info: Lista de objetivos seleccionados [{id: int, position: [lon, lat]}, ...]
-            user_description: Descripción en lenguaje natural del usuario
-            solver: Algoritmo de optimización seleccionado ('vns_solver', 'ts_solver', 'sa_solver', 'ag_solver')
-        
+            depot_info: Information of the selected depot {id: int, position: [lon, lat]}
+            targets_info: List of selected targets [{id: int, position: [lon, lat]}, ...]
+            user_description: User's natural language description
+            solver: Selected optimization algorithm ('vns_solver', 'ts_solver', 'sa_solver', 'ag_solver')
+
         Returns:
-            dict con los parámetros extraídos y mensajes de respuesta
+            dict with the extracted parameters and response messages
         """
         
         # Construir contexto para el análisis
@@ -62,54 +62,55 @@ class CVRPAssistant:
         # Prompt para analizar los requerimientos
         prompt = f"""
         {header_trucks}
-        El usuario tiene un problema de ruteo de vehículos (CVRP) con la siguiente configuración:
+        The user has a Capacitated Vehicle Routing Problem (CVRP) with the following configuration:
 
-        DEPÓSITO:
-        - Nodo ID: {depot_info['id']}
-        - Coordenadas: {depot_info['position']}
+        DEPOT:
+        - Node ID: {depot_info['id']}
+        - Coordinates: {depot_info['position']}
 
-        PUNTOS OBJETIVO ({len(targets_info)} destinos):
+        TARGET LOCATIONS ({len(targets_info)} destinations):
         {self._format_targets_for_prompt(targets_info)}
 
-        ALGORITMO SELECCIONADO: {self._get_solver_description(solver)}
+        SELECTED ALGORITHM: {self._get_solver_description(solver)}
 
-        DESCRIPCIÓN DEL USUARIO:
+        USER DESCRIPTION:
         "{user_description}"
 
-        Por favor, analiza la descripción del usuario y extrae la siguiente información considerando que se usará {solver.replace('_', ' ').title()}:
+        Please analyze the user's description and extract the following information, considering that {solver.replace('_', ' ').title()} will be used:
 
-        1. NÚMERO DE CAMIONES: {
-            f"Usa EXACTAMENTE los {explicit_trucks} camiones que el usuario especificó."
+        1. NUMBER OF TRUCKS: {
+            f"Use EXACTLY the {explicit_trucks} trucks the user specified."
             if explicit_trucks is not None
-            else f"¿Cuántos vehículos necesita? Si no se especifica, sugiere un número razonable basado en los {len(targets_info)} destinos y el algoritmo {solver}."
+            else f"How many vehicles are needed? If not specified, suggest a reasonable number based on the {len(targets_info)} destinations and the {solver} algorithm."
         }
 
-        2. CAPACIDADES DE LOS CAMIONES: ¿Qué capacidad tiene cada camión? Si no se especifica, sugiere capacidades razonables.
+        2. TRUCK CAPACITIES: What is the capacity of each truck? If not specified, suggest reasonable capacities.
 
-        3. DEMANDAS DE LOS DESTINOS: ¿Cuál es la demanda de cada punto objetivo? Si no se especifica, sugiere demandas razonables basadas en el contexto.
+        3. DEMANDS OF TARGET LOCATIONS: What is the demand for each target location? If not specified, suggest reasonable demands based on the context.
 
-        4. OBSERVACIONES: Cualquier información adicional relevante que hayas inferido, incluyendo consideraciones específicas para el algoritmo {solver}.
+        4. OBSERVATIONS: Any additional relevant information you have inferred, including solver-specific considerations for {solver}.
 
-        Responde ÚNICAMENTE con un JSON en este formato exacto:
+        Respond ONLY with a JSON in this exact format:
         {{
-            "num_trucks": <número_entero>,
-            "truck_capacities": [<lista_de_capacidades_enteras>],
-            "target_demands": [<lista_de_demandas_enteras>],
+            "num_trucks": <integer_number>,
+            "truck_capacities": [<list_of_integer_capacities>],
+            "target_demands": [<list_of_integer_demands>],
             "reasoning": {{
-                "num_trucks_reason": "explicación de por qué elegiste este número de camiones",
-                "capacities_reason": "explicación de las capacidades elegidas",
-                "demands_reason": "explicación de las demandas asignadas",
-                "solver_considerations": "consideraciones específicas para {solver}"
+                "num_trucks_reason": "explanation of why this number of trucks was chosen",
+                "capacities_reason": "explanation of the chosen capacities",
+                "demands_reason": "explanation of the assigned demands",
+                "solver_considerations": "specific considerations for {solver}"
             }},
-            "observations": "observaciones adicionales o sugerencias"
+            "observations": "additional observations or suggestions"
         }}
 
-        IMPORTANTE: 
-        - La lista truck_capacities debe tener exactamente num_trucks elementos
-        - La lista target_demands debe tener exactamente {len(targets_info)} elementos
-        - Todos los números deben ser enteros positivos
-        - No incluyas texto fuera del JSON
+        IMPORTANT:
+        - The truck_capacities list must contain exactly num_trucks elements
+        - The target_demands list must contain exactly {len(targets_info)} elements
+        - All numbers must be positive integers
+        - Do not include any text outside of the JSON
         """
+
         
         try:
             response = self.gemini.ask(prompt)
