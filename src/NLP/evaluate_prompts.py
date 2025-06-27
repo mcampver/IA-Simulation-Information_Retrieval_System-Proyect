@@ -26,30 +26,32 @@ gemini_client = Gemini()
 
 def get_optimized_prompt(depot_info, targets_info, user_description, solver='vns_solver'):
     """
-    Genera el prompt optimizado, basado en tu cvrp_assistant.py.
-    Esta es la versión 'buena' y controlada.
+    Genera el prompt optimizado (Versión 2).
+    Esta versión delega la resolución de ambigüedades a la IA para mejorar la precisión.
     """
-    match = re.search(r'(\d+)\s+camiones', user_description, re.IGNORECASE)
-    explicit_trucks = int(match.group(1)) if match else None
+    # --- INICIO DE LA MODIFICACIÓN ---
 
-    header_trucks = ""
-    if explicit_trucks is not None:
-        header_trucks = (
-            f"El usuario ha indicado que tiene EXACTAMENTE "
-            f"{explicit_trucks} camiones disponibles.\n\n"
-        )
+    # 1. ELIMINAMOS el pre-procesamiento con expresiones regulares.
+    #    Ya no intentaremos adivinar el número de camiones en Python.
+    #
+    # match = re.search(r'(\d+)\s+camiones', user_description, re.IGNORECASE)
+    # explicit_trucks = int(match.group(1)) if match else None
+    # header_trucks = ""
+    # if explicit_trucks is not None: ...
 
+    # 2. CREAMOS una instrucción más inteligente que enseña a la IA cómo actuar.
     num_trucks_instruction = (
-        f"Usa EXACTAMENTE los {explicit_trucks} camiones que el usuario especificó."
-        if explicit_trucks is not None
-        else f"Sugiere un número razonable de vehículos basado en los {len(targets_info)} destinos."
+        "Determina el número de camiones. Si el usuario menciona varios números o se corrige a sí mismo "
+        "(ejemplo: 'necesito 2 camiones, no, perdón, 3'), **utiliza siempre la cifra final o la corrección más reciente**. "
+        "Si no se especifica un número, sugiere uno que sea razonable para la tarea."
     )
 
-    # Convertimos la lista de targets a un string más legible para el prompt
+    # --- FIN DE LA MODIFICACIÓN ---
+
     targets_str = "\n".join([f"  - Nodo ID: {t['id']} - Coordenadas: {t['position']}" for t in targets_info])
 
+    # El prompt ahora no tiene el {header_trucks} y usa la nueva instrucción.
     return f"""
-    {header_trucks}
     Analiza la siguiente descripción de un problema CVRP y extrae los parámetros.
 
     CONTEXTO:
@@ -85,6 +87,68 @@ def get_optimized_prompt(depot_info, targets_info, user_description, solver='vns
     - La lista `target_demands` debe tener {len(targets_info)} elementos.
     - Todos los números deben ser enteros positivos.
     """
+    
+# def get_optimized_prompt(depot_info, targets_info, user_description, solver='vns_solver'):
+#     """
+#     Genera el prompt optimizado, basado en tu cvrp_assistant.py.
+#     Esta es la versión 'buena' y controlada.
+#     """
+#     match = re.search(r'(\d+)\s+camiones', user_description, re.IGNORECASE)
+#     explicit_trucks = int(match.group(1)) if match else None
+
+#     header_trucks = ""
+#     if explicit_trucks is not None:
+#         header_trucks = (
+#             f"El usuario ha indicado que tiene EXACTAMENTE "
+#             f"{explicit_trucks} camiones disponibles.\n\n"
+#         )
+
+#     num_trucks_instruction = (
+#         f"Usa EXACTAMENTE los {explicit_trucks} camiones que el usuario especificó."
+#         if explicit_trucks is not None
+#         else f"Sugiere un número razonable de vehículos basado en los {len(targets_info)} destinos."
+#     )
+
+#     # Convertimos la lista de targets a un string más legible para el prompt
+#     targets_str = "\n".join([f"  - Nodo ID: {t['id']} - Coordenadas: {t['position']}" for t in targets_info])
+
+#     return f"""
+#     {header_trucks}
+#     Analiza la siguiente descripción de un problema CVRP y extrae los parámetros.
+
+#     CONTEXTO:
+#     - Depósito: Nodo {depot_info['id']} en {depot_info['position']}
+#     - Destinos ({len(targets_info)}):
+# {targets_str}
+#     - Algoritmo a usar: {solver}
+
+#     DESCRIPCIÓN DEL USUARIO:
+#     "{user_description}"
+
+#     TAREAS:
+#     1. NÚMERO DE CAMIONES: {num_trucks_instruction}
+#     2. CAPACIDADES DE LOS CAMIONES: ¿Cuál es la capacidad de cada camión? Si no se especifica, sugiere capacidades razonables.
+#     3. DEMANDAS DE LOS DESTINOS: ¿Cuál es la demanda de cada destino? Si no se especifica, sugiere demandas razonables.
+#     4. OBSERVACIONES: Cualquier información relevante inferida.
+
+#     Responde ÚNICAMENTE con un objeto JSON en este formato exacto, sin texto adicional:
+#     {{
+#         "num_trucks": <integer>,
+#         "truck_capacities": [<lista de integers>],
+#         "target_demands": [<lista de integers>],
+#         "reasoning": {{
+#             "num_trucks_reason": "explicación",
+#             "capacities_reason": "explicación",
+#             "demands_reason": "explicación"
+#         }},
+#         "observations": "observaciones"
+#     }}
+
+#     REGLAS IMPORTANTES:
+#     - La lista `truck_capacities` debe tener `num_trucks` elementos.
+#     - La lista `target_demands` debe tener {len(targets_info)} elementos.
+#     - Todos los números deben ser enteros positivos.
+#     """
 
 def get_weak_prompt(depot_info, targets_info, user_description, solver='vns_solver'):
     """
