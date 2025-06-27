@@ -1,5 +1,3 @@
-# evaluate_prompts.py (Versión Final Corregida)
-
 import os
 import json
 import re
@@ -7,29 +5,13 @@ import time
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from Gemini import Gemini
 
-# Asumiendo que tu archivo Gemini.py está en una carpeta src/NLP/
-# y que ejecutas esto desde la raíz del proyecto.
-# Ajusta la importación si tu estructura de carpetas es diferente.
-try:
-    from src.NLP.Gemini import Gemini
-except ImportError:
-    # Fallback si el script se ejecuta desde la misma carpeta que Gemini.py
-    from Gemini import Gemini
-
-
-# --- 1. CONFIGURACIÓN ---
-# Inicializar el cliente de Gemini
 gemini_client = Gemini()
 
-# --- 2. DEFINICIÓN DE PROMPTS ---
+# DEFINICIÓN DE PROMPTS
 
 def get_optimized_prompt(depot_info, targets_info, user_description, solver='vns_solver'):
-    """
-    Genera el prompt optimizado (Versión 2).
-    Esta versión delega la resolución de ambigüedades a la IA para mejorar la precisión.
-    """
-    # --- INICIO DE LA MODIFICACIÓN ---
 
     # 1. ELIMINAMOS el pre-procesamiento con expresiones regulares.
     #    Ya no intentaremos adivinar el número de camiones en Python.
@@ -45,8 +27,6 @@ def get_optimized_prompt(depot_info, targets_info, user_description, solver='vns
         "(ejemplo: 'necesito 2 camiones, no, perdón, 3'), **utiliza siempre la cifra final o la corrección más reciente**. "
         "Si no se especifica un número, sugiere uno que sea razonable para la tarea."
     )
-
-    # --- FIN DE LA MODIFICACIÓN ---
 
     targets_str = "\n".join([f"  - Nodo ID: {t['id']} - Coordenadas: {t['position']}" for t in targets_info])
 
@@ -89,10 +69,6 @@ def get_optimized_prompt(depot_info, targets_info, user_description, solver='vns
     """
     
 # def get_optimized_prompt(depot_info, targets_info, user_description, solver='vns_solver'):
-#     """
-#     Genera el prompt optimizado, basado en tu cvrp_assistant.py.
-#     Esta es la versión 'buena' y controlada.
-#     """
 #     match = re.search(r'(\d+)\s+camiones', user_description, re.IGNORECASE)
 #     explicit_trucks = int(match.group(1)) if match else None
 
@@ -212,7 +188,7 @@ test_cases = [
     }
 ]
 
-# --- 4. MOTOR DE EVALUACIÓN ---
+# MOTOR DE EVALUACION
 
 def run_evaluation():
     results = []
@@ -236,7 +212,7 @@ def run_evaluation():
             })
     return pd.DataFrame(results)
 
-# --- 5. ANÁLISIS DE MÉTRICAS ---
+# METRICAS 
 
 def analyze_response(response_text, expected_results, num_targets):
     metrics = {
@@ -278,13 +254,12 @@ def analyze_response(response_text, expected_results, num_targets):
         print(f"    [FAIL] Error al decodificar JSON o procesar la respuesta.")
     return metrics
 
-# --- 6. VISUALIZACIÓN ---
+# VISUALIZACION
 
 def plot_results(df):
     """
     Genera una gráfica de barras comparando los dos prompts.
     """
-    # **INICIO DE LA CORRECCIÓN**
     # 1. Definir el diccionario de métricas PRIMERO.
     metrics_to_plot = {
         "valid_json": "Formato JSON Válido",
@@ -296,7 +271,6 @@ def plot_results(df):
     # 2. Usar las llaves del diccionario para seleccionar las columnas a promediar.
     metrics_cols = list(metrics_to_plot.keys())
     summary = df.groupby('prompt_type')[metrics_cols].mean().reset_index()
-    # **FIN DE LA CORRECCIÓN**
 
     labels = list(metrics_to_plot.values())
     optimized_scores = summary[summary['prompt_type'] == 'Optimized'][metrics_cols].values.flatten() * 100
@@ -329,5 +303,5 @@ def plot_results(df):
 if __name__ == "__main__":
     results_df = run_evaluation()
     print("\n--- Resultados de la Evaluación ---")
-    print(results_df.to_string()) # Usar to_string() para ver todas las filas
+    print(results_df.to_string()) 
     plot_results(results_df)
