@@ -1,0 +1,3 @@
+prompt,case,success,valid_len_caps,valid_len_dem,total_demand_ok,latency
+anterior,Necesito repartir productos alimenticios a 3 tiendas pequeñas en La Habana. Cada tienda necesita entre 10 y 20 cajas. Tengo 2 camiones disponibles con capacidad de 50 cajas cada uno.,True,True,True,True,1750980936.849207
+mejorado,Necesito repartir productos alimenticios a 3 tiendas pequeñas en La Habana. Cada tienda necesita entre 10 y 20 cajas. Tengo 2 camiones disponibles con capacidad de 50 cajas cada uno.,True,True,True,True,1750980939.002638
