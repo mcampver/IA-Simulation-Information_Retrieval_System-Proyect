@@ -15,6 +15,26 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 from flask import Flask, request, jsonify
 
+# Importar sistema multi-agente
+from src.multi_agent import (
+    create_simulation_environment, 
+    get_simulation_environment,
+    VehicleAgent,
+    VehicleBehavior,
+    communication_manager
+)
+from src.multi_agent.websocket_handlers import (
+    handle_route_optimization_request,
+    handle_weather_forecast_request,
+    handle_trigger_weather_event,
+    handle_traffic_light_modification,
+    handle_simulation_stats_request,
+    handle_emergency_event,
+    handle_spawn_vehicle,
+    handle_start_simulation,
+    handle_stop_simulation
+)
+
 # Importar análisis climático
 import sys
 sys.path.append("src/weather")
@@ -28,6 +48,9 @@ except ImportError as e:
 
 # Crear una instancia global del asistente RAG
 RAG_ASSISTANT = create_vrp_rag_assistant()
+
+# Instancia global del entorno multi-agente
+multi_agent_environment = None
 
 traffic_lights = {}  # node_id: {"state": "red"/"green", "timer": X}
 
@@ -79,7 +102,7 @@ def analyze_graph_connectivity():
 
 def load_streets():
     """Carga los datos del mapa desde los archivos de caché y construye el grafo de calles"""
-    global street_graph, all_nodes, street_congestion
+    global street_graph, all_nodes, street_congestion, multi_agent_environment
     
     # Cargar datos de OSM desde el archivo de caché
     cache_file = os.path.join("cache", "479c34c9f9679cb8467293e0403a0250c7ef8556.json")
@@ -187,6 +210,10 @@ def load_streets():
         # NUEVO: Analizar conectividad
         analyze_graph_connectivity()
         
+        # NUEVO: Inicializar entorno multi-agente
+        multi_agent_environment = create_simulation_environment(street_graph)
+        print("✅ Entorno multi-agente creado")
+        
     except Exception as e:
         print(f"Error cargando datos de calles: {e}")
         print("Creando grafo de desarrollo...")
@@ -203,6 +230,10 @@ def load_streets():
                                      highway_type="residential")
         all_nodes = list(street_graph.nodes())
         print("Usando grafo de desarrollo con 20 nodos")
+        
+        # Inicializar entorno multi-agente incluso con grafo de desarrollo
+        multi_agent_environment = create_simulation_environment(street_graph)
+        print("✅ Entorno multi-agente creado (modo desarrollo)")
 
 
 
@@ -210,17 +241,39 @@ async def send_positions(websocket):
     """Envía las posiciones actualizadas de los vehículos al cliente"""
     while True:
         try:
-            # Actualizar las posiciones
-            #update_vehicle_positions(street_graph, traffic_lights, vehicles, vehicle_speeds, all_nodes, street_congestion)
-            #update_traffic_lights(traffic_lights)
+            # Obtener datos del sistema multi-agente si está disponible
+            vehicle_data = []
+            multi_agent_status = {}
+            
+            if multi_agent_environment:
+                # Obtener posiciones de vehículos del sistema multi-agente
+                vehicle_positions = multi_agent_environment.get_vehicle_positions()
+                vehicle_data = [
+                    {
+                        "id": vehicle["id"], 
+                        "lat": vehicle["lat"], 
+                        "lon": vehicle["lon"],
+                        "behavior": vehicle.get("behavior", "normal"),
+                        "state": vehicle.get("state", "idle"),
+                        "speed": vehicle.get("speed", 0.0)
+                    }
+                    for vehicle in vehicle_positions
+                ]
+                
+                # Obtener estado de la simulación
+                multi_agent_status = multi_agent_environment.get_simulation_status()
+            
+            # Mantener compatibilidad con sistema original
+            if not vehicle_data and vehicles:
+                vehicle_data = [
+                    {"id": vid, "lat": v["lat"], "lon": v["lon"]}
+                    for vid, v in vehicles.items()
+                ]
             
             # Empaquetar y enviar los datos
             payload = {
                 "timestamp": datetime.now().isoformat(),
-                "vehicles": [
-                    {"id": vid, "lat": v["lat"], "lon": v["lon"]}
-                    for vid, v in vehicles.items()
-                ],
+                "vehicles": vehicle_data,
                 "traffic_lights": [
                     {
                         "node_id": nid,
@@ -230,7 +283,8 @@ async def send_positions(websocket):
                         "zone": data.get("zone", 0),
                         "direction": data.get("direction", "east")
                     } for nid, data in traffic_lights.items()
-                ]
+                ],
+                "multi_agent_status": multi_agent_status
             }
             
             await websocket.send(json.dumps(payload))
@@ -258,6 +312,42 @@ async def handler(websocket):
                 if message_type == 'optimization_request':
                     # Manejar solicitud de optimización
                     await handle_optimization_request(websocket, data)
+                
+                elif message_type == 'start_multi_agent_simulation':
+                    # Iniciar simulación multi-agente
+                    await handle_start_simulation(websocket, data, multi_agent_environment)
+                
+                elif message_type == 'stop_multi_agent_simulation':
+                    # Detener simulación multi-agente
+                    await handle_stop_simulation(websocket, data, multi_agent_environment)
+                
+                elif message_type == 'spawn_vehicle':
+                    # Crear nuevo vehículo en la simulación
+                    await handle_spawn_vehicle(websocket, data, multi_agent_environment)
+                
+                elif message_type == 'emergency_event':
+                    # Crear evento de emergencia
+                    await handle_emergency_event(websocket, data, multi_agent_environment)
+                
+                elif message_type == 'request_route_optimization':
+                    # Solicitar optimización de ruta a agente especializado
+                    await handle_route_optimization_request(websocket, data, multi_agent_environment)
+                
+                elif message_type == 'get_weather_forecast':
+                    # Obtener pronóstico del tiempo
+                    await handle_weather_forecast_request(websocket, data, multi_agent_environment)
+                
+                elif message_type == 'trigger_weather_event':
+                    # Desencadenar evento meteorológico
+                    await handle_trigger_weather_event(websocket, data, multi_agent_environment)
+                
+                elif message_type == 'modify_traffic_light':
+                    # Modificar estado de semáforo
+                    await handle_traffic_light_modification(websocket, data, multi_agent_environment)
+                
+                elif message_type == 'get_simulation_stats':
+                    # Obtener estadísticas detalladas
+                    await handle_simulation_stats_request(websocket, data, multi_agent_environment)
                 
                 # Añadir este bloque para manejar solicitudes de nodos del mapa
                 elif message_type == 'request_map_nodes':
@@ -296,6 +386,7 @@ async def handler(websocket):
     except Exception as e:
         print(f"Error en el handler: {e}")
 
+# Maneja solicitudes de optimización de rutas
 # Maneja solicitudes de optimización de rutas
 async def handle_optimization_request(websocket, data):
     """Maneja solicitudes de optimización de rutas con validación"""
