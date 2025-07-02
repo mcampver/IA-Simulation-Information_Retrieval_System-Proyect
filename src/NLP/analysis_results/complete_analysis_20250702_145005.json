@@ -1,0 +1,10 @@
+{
+  "executive_summary": {
+    "total_tests": 49,
+    "strategies_evaluated": 7,
+    "average_overall_score": 0.35218727477320394,
+    "best_strategy_overall": "zero_shot",
+    "best_strategy_truck_accuracy": "zero_shot"
+  },
+  "strategy_performance": {
+    

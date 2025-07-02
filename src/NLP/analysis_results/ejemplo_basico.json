@@ -1,0 +1,10 @@
+{
+  "executive_summary": {
+    "total_tests": 7,
+    "strategies_evaluated": 1,
+    "average_overall_score": 0.09142857142857143,
+    "best_strategy_overall": "chain_of_thought",
+    "best_strategy_truck_accuracy": "chain_of_thought"
+  },
+  "strategy_performance": {
+    
